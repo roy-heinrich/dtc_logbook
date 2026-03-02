@@ -36,14 +36,17 @@ RUN composer install --optimize-autoloader --no-dev --no-scripts
 # Copy package files
 COPY package*.json ./
 
-# Install Node dependencies
-RUN npm ci --only=production
+# Install Node dependencies (include dev deps required for build tools like Vite)
+RUN npm ci
 
 # Copy application files
 COPY . .
 
 # Build assets
 RUN npm run build
+
+# Remove dev dependencies after build
+RUN npm prune --omit=dev
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
