@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: dtc-logbook
+    env: php
+    plan: free
+    buildCommand: |
+      composer install --optimize-autoloader --no-dev
+      php artisan config:cache
+      php artisan route:cache
+      npm install
+      npm run build
+    startCommand: php artisan serve --host=0.0.0.0 --port=$PORT
+    healthCheckPath: /
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: LOG_LEVEL
+        value: error
+      - key: LARAVEL_SKIP_ENV_FILE
+        value: true
+
+  - type: web
+    name: dtc-logbook-redis
+    repo: https://github.com/render-examples/redis
+    plan: free
+    maxShutdownDelay: 600
