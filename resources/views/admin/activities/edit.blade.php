@@ -26,12 +26,12 @@
 
                 <div>
                     <label class="text-xs font-semibold uppercase text-slate-500">Activity Date</label>
-                    <input type="date" name="activity_date" value="{{ old('activity_date', $activity->activity_date?->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm dark:border-slate-800 dark:bg-slate-950">
+                    <input type="date" name="activity_date" value="{{ old('activity_date', $activity->activity_at?->timezone(config('app.timezone'))->format('Y-m-d')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm dark:border-slate-800 dark:bg-slate-950">
                 </div>
 
                 <div>
                     <label class="text-xs font-semibold uppercase text-slate-500">Activity Time</label>
-                    <input type="time" name="activity_time" value="{{ old('activity_time', $activity->activity_time ? substr($activity->activity_time, 0, 5) : '') }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm dark:border-slate-800 dark:bg-slate-950">
+                    <input type="time" name="activity_time" value="{{ old('activity_time', $activity->activity_at?->timezone(config('app.timezone'))->format('H:i')) }}" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm dark:border-slate-800 dark:bg-slate-950">
                 </div>
 
                 <div class="md:col-span-2 flex items-center justify-between">

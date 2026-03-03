@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\LoginLog;
 use App\Models\RegUser;
 
 class Activity extends Model
@@ -17,17 +16,15 @@ class Activity extends Model
         'user_id',
         'facility_used',
         'service_type',
-        'activity_date',
-        'activity_time',
+        'activity_at',
     ];
 
     protected $casts = [
-        'activity_date' => 'date',
+        'activity_at' => 'datetime',
     ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(RegUser::class, 'user_id', 'user_id');
     }
-
-    }
+}

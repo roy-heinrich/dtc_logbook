@@ -15,16 +15,14 @@ class DashboardController extends Controller
     {
         $totalUsers = RegUser::count();
         $totalActivities = Activity::count();
-        $todayActivities = Activity::whereDate('activity_date', today())->count();
-        $latestActivity = Activity::orderByDesc('activity_date')
-            ->orderByDesc('activity_time')
+        $todayActivities = Activity::whereDate('activity_at', today())->count();
+        $latestActivity = Activity::orderByDesc('activity_at')
             ->with('user')
             ->first();
 
         // Recent user attendance/activity logs (not admin login logs)
         $recentActivities = Activity::with('user')
-            ->orderByDesc('activity_date')
-            ->orderByDesc('activity_time')
+            ->orderByDesc('activity_at')
             ->limit(10)
             ->get();
 
@@ -47,9 +45,9 @@ class DashboardController extends Controller
     private function buildActivityChart(): Collection
     {
         $startDate = now()->subDays(6)->toDateString();
-        $totals = Activity::selectRaw('activity_date, COUNT(*) as total')
-            ->whereNotNull('activity_date')
-            ->where('activity_date', '>=', $startDate)
+        $totals = Activity::selectRaw('DATE(activity_at) as activity_date, COUNT(*) as total')
+            ->whereNotNull('activity_at')
+            ->whereDate('activity_at', '>=', $startDate)
             ->groupBy('activity_date')
             ->orderBy('activity_date')
             ->pluck('total', 'activity_date');

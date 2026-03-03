@@ -23,7 +23,7 @@
                     <div class="font-semibold text-slate-900 dark:text-white">
                         {{ $latestActivity->user?->lname_user }}, {{ $latestActivity->user?->fname_user }}
                     </div>
-                    <div class="text-slate-700 dark:text-slate-400">{{ $latestActivity->activity_date?->format('Y-m-d') }} {{ $latestActivity->activity_time }}</div>
+                    <div class="text-slate-700 dark:text-slate-400">{{ $latestActivity->activity_at?->timezone(config('app.timezone'))->format('Y-m-d H:i') }}</div>
                 @else
                     No activity data available
                 @endif

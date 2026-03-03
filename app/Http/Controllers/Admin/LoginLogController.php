@@ -22,10 +22,9 @@ class LoginLogController extends Controller
             ->when($userId, fn ($query) => $query->where('user_id', $userId))
             ->when($facility !== '', fn ($query) => $query->where('facility_used', $facility))
             ->when($serviceType !== '', fn ($query) => $query->where('service_type', $serviceType))
-            ->when($from, fn ($query) => $query->whereDate('activity_date', '>=', $from))
-            ->when($to, fn ($query) => $query->whereDate('activity_date', '<=', $to))
-            ->orderByDesc('activity_date')
-            ->orderByDesc('activity_time')
+            ->when($from, fn ($query) => $query->whereDate('activity_at', '>=', $from))
+            ->when($to, fn ($query) => $query->whereDate('activity_at', '<=', $to))
+            ->orderByDesc('activity_at')
             ->paginate(10)
             ->withQueryString();
 

@@ -77,8 +77,8 @@
                         </td>
                         <td class="px-6 py-4 text-slate-600 dark:text-slate-300">{{ $log->facility_used }}</td>
                         <td class="px-6 py-4 text-slate-600 dark:text-slate-300">{{ $log->service_type }}</td>
-                        <td class="px-6 py-4 text-slate-600 dark:text-slate-300">{{ $log->activity_date?->format('Y-m-d') }}</td>
-                        <td class="px-6 py-4 text-slate-600 dark:text-slate-300">{{ $log->activity_time }}</td>
+                        <td class="px-6 py-4 text-slate-600 dark:text-slate-300">{{ $log->activity_at?->timezone(config('app.timezone'))->format('Y-m-d') }}</td>
+                        <td class="px-6 py-4 text-slate-600 dark:text-slate-300">{{ $log->activity_at?->timezone(config('app.timezone'))->format('H:i') }}</td>
                     </tr>
                 @empty
                     <tr>

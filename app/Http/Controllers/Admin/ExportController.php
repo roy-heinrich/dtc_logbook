@@ -21,14 +21,13 @@ class ExportController extends Controller
         // Get preview data based on applied filters
         $query = $this->buildActivitiesQuery($request);
         $activities = (clone $query)
-            ->orderByDesc('activity_date')
-            ->orderByDesc('activity_time')
+            ->orderByDesc('activity_at')
             ->limit(10)
             ->get();
 
         $totalUsers = (clone $query)->distinct('user_id')->count('user_id');
         $totalActivities = (clone $query)->count();
-        $todayActivities = (clone $query)->whereDate('activity_date', today())->count();
+        $todayActivities = (clone $query)->whereDate('activity_at', today())->count();
         $filterSummary = $this->getFilterSummary($request);
 
         return view('admin.reports.index', [
@@ -45,13 +44,12 @@ class ExportController extends Controller
     {
         $query = $this->buildActivitiesQuery($request);
         $activities = (clone $query)
-            ->orderByDesc('activity_date')
-            ->orderByDesc('activity_time')
+            ->orderByDesc('activity_at')
             ->get();
 
         $totalUsers = (clone $query)->distinct('user_id')->count('user_id');
         $totalActivities = (clone $query)->count();
-        $todayActivities = (clone $query)->whereDate('activity_date', today())->count();
+        $todayActivities = (clone $query)->whereDate('activity_at', today())->count();
         $filterSummary = $this->getFilterSummary($request);
 
         // Create CSV content
@@ -73,12 +71,13 @@ class ExportController extends Controller
         $csv .= "ACTIVITY LOGS\n";
         $csv .= "Name,Email,Facility Used,Service Type,Date,Time\n";
         foreach ($activities as $activity) {
+            $activityAt = $activity->activity_at?->timezone(config('app.timezone'));
             $csv .= "\"{$activity->user?->fname_user} {$activity->user?->lname_user}\",";
             $csv .= "\"{$activity->user?->email_user}\",";
             $csv .= "\"{$activity->facility_used}\",";
             $csv .= "\"{$activity->service_type}\",";
-            $csv .= $activity->activity_date?->format('Y-m-d') . ",";
-            $csv .= $activity->activity_time . "\n";
+            $csv .= ($activityAt?->format('Y-m-d') ?? '-') . ",";
+            $csv .= ($activityAt?->format('H:i') ?? '-') . "\n";
         }
 
         return response($csv)
@@ -90,13 +89,12 @@ class ExportController extends Controller
     {
         $query = $this->buildActivitiesQuery($request);
         $activities = (clone $query)
-            ->orderByDesc('activity_date')
-            ->orderByDesc('activity_time')
+            ->orderByDesc('activity_at')
             ->get();
 
         $totalUsers = (clone $query)->distinct('user_id')->count('user_id');
         $totalActivities = (clone $query)->count();
-        $todayActivities = (clone $query)->whereDate('activity_date', today())->count();
+        $todayActivities = (clone $query)->whereDate('activity_at', today())->count();
         $filterSummary = $this->getFilterSummary($request);
 
         $html = '<html>';
@@ -161,13 +159,14 @@ class ExportController extends Controller
         $html .= '<tbody>';
 
         foreach ($activities as $activity) {
+            $activityAt = $activity->activity_at?->timezone(config('app.timezone'));
             $html .= '<tr>';
             $html .= '<td>' . ($activity->user?->fname_user . ' ' . $activity->user?->lname_user) . '</td>';
             $html .= '<td>' . ($activity->user?->email_user ?? 'N/A') . '</td>';
             $html .= '<td>' . ($activity->facility_used ?? '-') . '</td>';
             $html .= '<td>' . ($activity->service_type ?? '-') . '</td>';
-            $html .= '<td>' . $activity->activity_date?->format('Y-m-d') . '</td>';
-            $html .= '<td>' . ($activity->activity_time ?? '-') . '</td>';
+            $html .= '<td>' . ($activityAt?->format('Y-m-d') ?? '-') . '</td>';
+            $html .= '<td>' . ($activityAt?->format('H:i') ?? '-') . '</td>';
             $html .= '</tr>';
         }
 
@@ -191,14 +190,13 @@ class ExportController extends Controller
     {
         $query = $this->buildActivitiesQuery($request);
         $activities = (clone $query)
-            ->orderByDesc('activity_date')
-            ->orderByDesc('activity_time')
+            ->orderByDesc('activity_at')
             ->limit(10)
             ->get();
 
         $totalUsers = (clone $query)->distinct('user_id')->count('user_id');
         $totalActivities = (clone $query)->count();
-        $todayActivities = (clone $query)->whereDate('activity_date', today())->count();
+        $todayActivities = (clone $query)->whereDate('activity_at', today())->count();
         $filterSummary = $this->getFilterSummary($request);
 
         // Build HTML preview
@@ -256,13 +254,14 @@ class ExportController extends Controller
 
             if (count($activities) > 0) {
                 foreach ($activities as $activity) {
+                    $activityAt = $activity->activity_at?->timezone(config('app.timezone'));
                     $html .= '<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">';
                     $html .= '<td class="px-2 py-2 text-slate-900 dark:text-slate-100 text-xs whitespace-normal break-words">' . htmlspecialchars($activity->user?->fname_user . ' ' . $activity->user?->lname_user, ENT_QUOTES, 'UTF-8') . '</td>';
                     $html .= '<td class="px-2 py-2 text-slate-900 dark:text-slate-100 text-xs whitespace-normal break-words">' . htmlspecialchars($activity->user?->email_user ?? 'N/A', ENT_QUOTES, 'UTF-8') . '</td>';
                     $html .= '<td class="px-2 py-2 text-slate-900 dark:text-slate-100 text-xs whitespace-normal break-words">' . htmlspecialchars($activity->facility_used ?? '-', ENT_QUOTES, 'UTF-8') . '</td>';
                     $html .= '<td class="px-2 py-2 text-slate-900 dark:text-slate-100 text-xs whitespace-normal break-words">' . htmlspecialchars($activity->service_type ?? '-', ENT_QUOTES, 'UTF-8') . '</td>';
-                    $html .= '<td class="px-2 py-2 text-slate-900 dark:text-slate-100 text-xs whitespace-normal break-words">' . $activity->activity_date?->format('Y-m-d') . '</td>';
-                    $html .= '<td class="px-2 py-2 text-slate-900 dark:text-slate-100 text-xs whitespace-normal break-words">' . htmlspecialchars($activity->activity_time ?? '-', ENT_QUOTES, 'UTF-8') . '</td>';
+                    $html .= '<td class="px-2 py-2 text-slate-900 dark:text-slate-100 text-xs whitespace-normal break-words">' . ($activityAt?->format('Y-m-d') ?? '-') . '</td>';
+                    $html .= '<td class="px-2 py-2 text-slate-900 dark:text-slate-100 text-xs whitespace-normal break-words">' . htmlspecialchars($activityAt?->format('H:i') ?? '-', ENT_QUOTES, 'UTF-8') . '</td>';
                     $html .= '</tr>';
                 }
             } else {
@@ -299,11 +298,14 @@ class ExportController extends Controller
         $endDate = $request->input('end_date');
 
         if (!empty($startDate) && !empty($endDate)) {
-            $query->whereBetween('activity_date', [$startDate, $endDate]);
+            $query->whereBetween('activity_at', [
+                $startDate . ' 00:00:00',
+                $endDate . ' 23:59:59',
+            ]);
         } elseif (!empty($startDate)) {
-            $query->whereDate('activity_date', '>=', $startDate);
+            $query->whereDate('activity_at', '>=', $startDate);
         } elseif (!empty($endDate)) {
-            $query->whereDate('activity_date', '<=', $endDate);
+            $query->whereDate('activity_at', '<=', $endDate);
         }
 
         $serviceType = $request->input('service_type');

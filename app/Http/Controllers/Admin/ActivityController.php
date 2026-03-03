@@ -21,10 +21,9 @@ class ActivityController extends Controller
             ->when($userId, fn ($query) => $query->where('user_id', $userId))
             ->when($facility !== '', fn ($query) => $query->where('facility_used', $facility))
             ->when($serviceType !== '', fn ($query) => $query->where('service_type', $serviceType))
-            ->when($from, fn ($query) => $query->whereDate('activity_date', '>=', $from))
-            ->when($to, fn ($query) => $query->whereDate('activity_date', '<=', $to))
-            ->orderByDesc('activity_date')
-            ->orderByDesc('activity_time')
+            ->when($from, fn ($query) => $query->whereDate('activity_at', '>=', $from))
+            ->when($to, fn ($query) => $query->whereDate('activity_at', '<=', $to))
+            ->orderByDesc('activity_at')
             ->paginate(20)
             ->withQueryString();
 
@@ -78,7 +77,19 @@ class ActivityController extends Controller
             'activity_time' => ['nullable', 'date_format:H:i'],
         ]);
 
-        Activity::create($data);
+        // Combine date and time into activity_at
+        $activityAt = null;
+        if (!empty($data['activity_date'])) {
+            $time = $data['activity_time'] ?? '00:00';
+            $activityAt = $data['activity_date'] . ' ' . $time;
+        }
+
+        Activity::create([
+            'user_id' => $data['user_id'],
+            'facility_used' => $data['facility_used'],
+            'service_type' => $data['service_type'],
+            'activity_at' => $activityAt,
+        ]);
 
         return redirect()
             ->route('admin.activities.index')
@@ -103,7 +114,18 @@ class ActivityController extends Controller
             'activity_time' => ['nullable', 'date_format:H:i'],
         ]);
 
-        $activity->update($data);
+        // Combine date and time into activity_at
+        $activityAt = null;
+        if (!empty($data['activity_date'])) {
+            $time = $data['activity_time'] ?? '00:00';
+            $activityAt = $data['activity_date'] . ' ' . $time;
+        }
+
+        $activity->update([
+            'facility_used' => $data['facility_used'],
+            'service_type' => $data['service_type'],
+            'activity_at' => $activityAt,
+        ]);
 
         return redirect()
             ->route('admin.activities.edit', $activity)

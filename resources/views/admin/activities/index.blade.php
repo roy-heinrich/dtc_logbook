@@ -78,8 +78,8 @@
                         </td>
                         <td class="px-6 py-4 text-slate-600 dark:text-slate-300">{{ $activity->facility_used }}</td>
                         <td class="px-6 py-4 text-slate-600 dark:text-slate-300">{{ $activity->service_type }}</td>
-                        <td class="px-6 py-4 text-slate-600 dark:text-slate-300">{{ $activity->activity_date?->format('Y-m-d') }}</td>
-                        <td class="px-6 py-4 text-slate-600 dark:text-slate-300">{{ $activity->activity_time }}</td>
+                        <td class="px-6 py-4 text-slate-600 dark:text-slate-300">{{ $activity->activity_at?->timezone(config('app.timezone'))->format('Y-m-d') }}</td>
+                        <td class="px-6 py-4 text-slate-600 dark:text-slate-300">{{ $activity->activity_at?->timezone(config('app.timezone'))->format('H:i') }}</td>
                         <td class="px-6 py-4 text-right">
                             <a
                                 href="{{ route('admin.activities.edit', $activity) }}"
