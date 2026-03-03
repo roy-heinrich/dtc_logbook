@@ -75,10 +75,6 @@
             </a>
         @endif
     </nav>
-
-    <div class="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
-        Data synced from MySQL
-    </div>
 </aside>
 
 <div

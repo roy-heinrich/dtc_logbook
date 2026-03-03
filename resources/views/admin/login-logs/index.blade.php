@@ -55,8 +55,9 @@
         </form>
     </div>
 
-    <div class="mt-6 overflow-hidden rounded-2xl glass-card shadow-sm">
-        <table class="w-full text-left text-sm">
+    <div class="mt-6 rounded-2xl glass-card shadow-sm">
+        <div class="overflow-x-auto">
+            <table class="min-w-[640px] w-full text-left text-sm">
             <thead class="bg-slate-50 text-xs uppercase tracking-widest text-slate-400 dark:bg-slate-950">
                 <tr>
                     <th class="px-6 py-3">User</th>
@@ -88,7 +89,8 @@
                     </tr>
                 @endforelse
             </tbody>
-        </table>
+            </table>
+        </div>
     </div>
 
     <div class="mt-6 rounded-2xl glass-card p-6 shadow-sm">
