@@ -99,15 +99,17 @@
                                         </svg>
                                     </a>
                                 @endif
-                                <label class="toggle-admin-status inline-flex items-center cursor-pointer" 
-                                       data-admin-id="{{ $admin->id }}"
-                                       data-status-url="{{ route('admin.admins.toggle-status', $admin) }}"
-                                       style="gap: 0.5rem;">
-                                    <input type="checkbox" class="sr-only peer" {{ $admin->is_active ? 'checked' : '' }} style="display: none;" />
-                                    <div style="position: relative; width: 3rem; height: 1.5rem; background-color: #e2e8f0; border-radius: 9999px; border: 2px solid #cbd5e1; transition: all 0.3s ease; cursor: pointer;" class="toggle-switch" data-toggle>
-                                        <div style="position: absolute; left: 0.2rem; top: 50%; width: 1.1rem; height: 1.1rem; background-color: #94a3b8; border-radius: 50%; transition: all 0.3s ease; content: '';" class="toggle-dot"></div>
-                                    </div>
-                                </label>
+                                @if($admin->id !== auth('admin')->id())
+                                    <label class="toggle-admin-status inline-flex items-center cursor-pointer" 
+                                           data-admin-id="{{ $admin->id }}"
+                                           data-status-url="{{ route('admin.admins.toggle-status', $admin) }}"
+                                           style="gap: 0.5rem;">
+                                        <input type="checkbox" class="sr-only peer" {{ $admin->is_active ? 'checked' : '' }} style="display: none;" />
+                                        <div style="position: relative; width: 3rem; height: 1.5rem; background-color: #e2e8f0; border-radius: 9999px; border: 2px solid #cbd5e1; transition: all 0.3s ease; cursor: pointer;" class="toggle-switch" data-toggle>
+                                            <div style="position: absolute; left: 0.2rem; top: 50%; width: 1.1rem; height: 1.1rem; background-color: #94a3b8; border-radius: 50%; transition: all 0.3s ease; content: '';" class="toggle-dot"></div>
+                                        </div>
+                                    </label>
+                                @endif
                                 @if($canDeleteAdmin)
                                     <form action="{{ route('admin.admins.destroy', $admin) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this admin?');">
                                         @csrf
@@ -196,15 +198,17 @@
                                             </svg>
                                         </a>
                                     @endif
-                                    <label class="toggle-admin-status inline-flex items-center cursor-pointer" 
-                                           data-admin-id="{{ $admin->id }}"
-                                           data-status-url="{{ route('admin.admins.toggle-status', $admin) }}"
-                                           style="gap: 0.5rem;">
-                                        <input type="checkbox" class="sr-only peer" {{ $admin->is_active ? 'checked' : '' }} style="display: none;" />
-                                        <div style="position: relative; width: 3rem; height: 1.5rem; background-color: #e2e8f0; border-radius: 9999px; border: 2px solid #cbd5e1; transition: all 0.3s ease; cursor: pointer;" class="toggle-switch" data-toggle>
-                                            <div style="position: absolute; left: 0.2rem; top: 50%; width: 1.1rem; height: 1.1rem; background-color: #94a3b8; border-radius: 50%; transition: all 0.3s ease; content: '';" class="toggle-dot"></div>
-                                        </div>
-                                    </label>
+                                    @if($admin->id !== auth('admin')->id())
+                                        <label class="toggle-admin-status inline-flex items-center cursor-pointer" 
+                                               data-admin-id="{{ $admin->id }}"
+                                               data-status-url="{{ route('admin.admins.toggle-status', $admin) }}"
+                                               style="gap: 0.5rem;">
+                                            <input type="checkbox" class="sr-only peer" {{ $admin->is_active ? 'checked' : '' }} style="display: none;" />
+                                            <div style="position: relative; width: 3rem; height: 1.5rem; background-color: #e2e8f0; border-radius: 9999px; border: 2px solid #cbd5e1; transition: all 0.3s ease; cursor: pointer;" class="toggle-switch" data-toggle>
+                                                <div style="position: absolute; left: 0.2rem; top: 50%; width: 1.1rem; height: 1.1rem; background-color: #94a3b8; border-radius: 50%; transition: all 0.3s ease; content: '';" class="toggle-dot"></div>
+                                            </div>
+                                        </label>
+                                    @endif
                                     @if($canDeleteAdmin)
                                         <form action="{{ route('admin.admins.destroy', $admin) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this admin?');">
                                             @csrf

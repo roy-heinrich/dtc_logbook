@@ -82,7 +82,7 @@
     </div>
 
     <!-- Delete Confirmation Modal -->
-    <div id="deleteModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50 dark:bg-black/70">
+    <div id="deleteModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 dark:bg-black/70">
         <div class="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-lg dark:border-slate-800 dark:bg-slate-900">
             <div class="flex items-start gap-4">
                 <div class="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-900/30">
@@ -124,16 +124,19 @@
 
     deleteUserBtn?.addEventListener('click', () => {
         deleteModal.classList.remove('hidden');
+        deleteModal.classList.add('flex');
     });
 
     cancelDeleteBtn?.addEventListener('click', () => {
         deleteModal.classList.add('hidden');
+        deleteModal.classList.remove('flex');
     });
 
     // Close modal when clicking outside
     deleteModal?.addEventListener('click', (e) => {
         if (e.target === deleteModal) {
             deleteModal.classList.add('hidden');
+            deleteModal.classList.remove('flex');
         }
     });
 
@@ -141,6 +144,7 @@
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !deleteModal.classList.contains('hidden')) {
             deleteModal.classList.add('hidden');
+            deleteModal.classList.remove('flex');
         }
     });
 </script>

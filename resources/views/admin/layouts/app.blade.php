@@ -23,10 +23,10 @@
             }
         })();
     </script>
-    <div x-data="{ open: false }" class="flex min-h-screen pt-20">
+    <div class="flex min-h-screen pt-20">
         @include('admin.partials.sidebar')
 
-        <div class="flex min-h-screen flex-1 flex-col overflow-x-hidden">
+        <div class="flex min-h-screen flex-1 flex-col overflow-x-hidden" style="margin-left: 5.5rem;">
             @include('admin.partials.topbar', ['pageTitle' => $pageTitle ?? 'Admin'])
 
             <main class="flex-1 px-6 pb-10 pt-6 lg:px-10 max-w-full">
