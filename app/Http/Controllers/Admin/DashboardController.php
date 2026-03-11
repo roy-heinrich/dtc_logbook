@@ -4,81 +4,170 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Activity;
-use App\Models\LoginLog;
 use App\Models\RegUser;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-        $totalUsers = RegUser::count();
-        $totalActivities = Activity::count();
-        $todayActivities = Activity::whereDate('activity_at', today())->count();
-        $latestActivity = Activity::orderByDesc('activity_at')
-            ->with('user')
-            ->first();
+        $todayKey = Carbon::today()->format('Y-m-d');
 
-        // Recent user attendance/activity logs (not admin login logs)
-        $recentActivities = Activity::with('user')
-            ->orderByDesc('activity_at')
-            ->limit(10)
-            ->get();
+        $totalUsers = Cache::remember('dashboard:total_users', 30, fn () => RegUser::count());
+        $totalActivities = Cache::remember('dashboard:total_activities', 30, fn () => Activity::count());
+        $todayActivities = Cache::remember(
+            "dashboard:today_activities:{$todayKey}",
+            30,
+            fn () => Activity::whereDate('activity_at', today())->count()
+        );
+        $latestActivity = Cache::remember('dashboard:latest_activity', 15, fn () => Activity::with('user')->latest('activity_at')->first());
 
-        $activityChart = $this->buildActivityChart();
-        $topFacilities = $this->topSummary('facility_used');
-        $topServices = $this->topSummary('service_type');
+        // Activity chart for last 7 days
+        $activityChart = Cache::remember("dashboard:activity_chart:{$todayKey}", 30, function () {
+            $chart = collect();
+            $maxCount = 1;
+
+            for ($i = 6; $i >= 0; $i--) {
+                $date = Carbon::today()->subDays($i);
+                $count = Activity::whereDate('activity_at', $date)->count();
+                $maxCount = max($maxCount, $count);
+
+                $chart->push([
+                    'date' => $date->format('Y-m-d'),
+                    'total' => $count,
+                    'percent' => 0,
+                ]);
+            }
+
+            return $chart->map(function ($point) use ($maxCount) {
+                $point['percent'] = $maxCount > 0 ? ($point['total'] / $maxCount) * 100 : 0;
+                return $point;
+            });
+        });
+
+        // Top facilities with pie chart data
+        $topFacilities = Cache::remember('dashboard:top_facilities', 60, function () {
+            return Activity::query()
+                ->whereNotNull('facility_used')
+                ->where('facility_used', '!=', '')
+                ->selectRaw('facility_used, COUNT(*) as total')
+                ->groupBy('facility_used')
+                ->orderByDesc('total')
+                ->limit(6)
+                ->get();
+        });
+
+        $facilityChartData = $this->preparePieChartData($topFacilities, [
+            '#2563eb', // blue-600
+            '#dc2626', // red-600
+            '#16a34a', // green-600
+            '#d97706', // amber-600
+            '#7c3aed', // violet-600
+            '#0891b2', // cyan-600
+        ], 'facility_used');
+
+        // Top services with pie chart data
+        $topServices = Cache::remember('dashboard:top_services', 60, function () {
+            return Activity::query()
+                ->whereNotNull('service_type')
+                ->where('service_type', '!=', '')
+                ->selectRaw('service_type, COUNT(*) as total')
+                ->groupBy('service_type')
+                ->orderByDesc('total')
+                ->limit(6)
+                ->get();
+        });
+
+        $serviceChartData = $this->preparePieChartData($topServices, [
+            '#9333ea', // purple-600
+            '#ea580c', // orange-600
+            '#0f766e', // teal-700
+            '#1d4ed8', // blue-700
+            '#be123c', // rose-700
+            '#65a30d', // lime-600
+        ], 'service_type');
+
+        // Most active users
+        $mostActiveUsers = Cache::remember('dashboard:most_active_users', 60, function () {
+            return RegUser::withCount('activities')
+                ->orderByDesc('activities_count')
+                ->limit(5)
+                ->get()
+                ->map(function ($user) {
+                    return [
+                        'name' => trim("{$user->fname_user} {$user->lname_user}"),
+                        'count' => $user->activities_count,
+                    ];
+                });
+        });
+
+        // Gender ratio
+        $genderStats = Cache::remember('dashboard:gender_stats', 60, function () {
+            return RegUser::selectRaw('sex_user, COUNT(*) as total')
+                ->groupBy('sex_user')
+                ->get();
+        });
+
+        $genderChartData = $this->preparePieChartData($genderStats, [
+            '#3b82f6', // blue-500 for Male
+            '#ec4899', // pink-500 for Female
+        ], 'sex_user');
 
         return view('admin.dashboard', [
             'totalUsers' => $totalUsers,
             'totalActivities' => $totalActivities,
             'todayActivities' => $todayActivities,
             'latestActivity' => $latestActivity,
-            'recentActivities' => $recentActivities,
             'activityChart' => $activityChart,
             'topFacilities' => $topFacilities,
             'topServices' => $topServices,
+            'facilityChartData' => $facilityChartData,
+            'serviceChartData' => $serviceChartData,
+            'mostActiveUsers' => $mostActiveUsers,
+            'genderStats' => $genderStats,
+            'genderChartData' => $genderChartData,
         ]);
     }
 
-    private function buildActivityChart(): Collection
+    /**
+     * Prepare pie chart data with slices and conic-gradient
+     */
+    private function preparePieChartData($items, $colors, $field)
     {
-        $startDate = now()->subDays(6)->toDateString();
-        $totals = Activity::selectRaw('DATE(activity_at) as activity_date, COUNT(*) as total')
-            ->whereNotNull('activity_at')
-            ->whereDate('activity_at', '>=', $startDate)
-            ->groupBy('activity_date')
-            ->orderBy('activity_date')
-            ->pluck('total', 'activity_date');
-
-        $days = collect(range(0, 6))->map(function (int $offset) {
-            return now()->subDays(6 - $offset)->toDateString();
-        });
-
-        $points = $days->map(function (string $date) use ($totals) {
+        if ($items->isEmpty()) {
             return [
-                'date' => $date,
-                'total' => (int) ($totals[$date] ?? 0),
+                'slices' => [],
+                'gradient' => 'conic-gradient(#e2e8f0 0% 100%)',
             ];
-        });
+        }
 
-        $max = max(1, $points->max('total'));
+        $total = $items->sum('total');
+        $slices = [];
+        $gradientParts = [];
+        $currentPercent = 0;
 
-        return $points->map(function (array $point) use ($max) {
-            $point['percent'] = (int) round(($point['total'] / $max) * 100);
+        foreach ($items as $index => $item) {
+            $percent = ($item->total / $total) * 100;
+            $color = $colors[$index % count($colors)];
+            
+            $slices[] = [
+                'label' => data_get($item, $field),
+                'value' => $item->total,
+                'percent' => $percent,
+                'color' => $color,
+            ];
 
-            return $point;
-        });
-    }
+            $startPercent = $currentPercent;
+            $currentPercent += $percent;
+            $gradientParts[] = "{$color} {$startPercent}% {$currentPercent}%";
+        }
 
-    private function topSummary(string $column): Collection
-    {
-        return Activity::select($column, DB::raw('COUNT(*) as total'))
-            ->whereNotNull($column)
-            ->groupBy($column)
-            ->orderByDesc('total')
-            ->limit(5)
-            ->get();
+        $gradient = 'conic-gradient(' . implode(', ', $gradientParts) . ')';
+
+        return [
+            'slices' => $slices,
+            'gradient' => $gradient,
+        ];
     }
 }

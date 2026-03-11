@@ -23,18 +23,6 @@
         </div>
     </div>
 
-    @if (session('success'))
-        <div class="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-700/60 dark:bg-green-900/30 dark:text-green-100">
-            {{ session('success') }}
-        </div>
-    @endif
-
-    @if (session('error'))
-        <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-700/60 dark:bg-red-900/30 dark:text-red-100">
-            {{ session('error') }}
-        </div>
-    @endif
-
     <div class="rounded-xl glass-card shadow-sm">
         <!-- Mobile/Tablet View - Card Layout -->
         <div class="md:hidden space-y-3 p-4">

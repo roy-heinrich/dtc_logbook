@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\RegUserController;
 use App\Http\Controllers\Admin\FacilityController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\ActivityController;
+use App\Http\Controllers\Admin\AgreementController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -65,6 +66,10 @@ Route::middleware('admin')->group(function () {
         Route::post('/activities', [ActivityController::class, 'store'])->name('activities.store');
         Route::get('/activities/{activity}/edit', [ActivityController::class, 'edit'])->name('activities.edit');
         Route::put('/activities/{activity}', [ActivityController::class, 'update'])->name('activities.update');
+
+        // Agreements (Privacy Policy & Terms of Service)
+        Route::get('/agreements', [AgreementController::class, 'index'])->name('agreements.index');
+        Route::post('/agreements', [AgreementController::class, 'update'])->name('agreements.update');
 
         // Super Admin only routes
         Route::middleware('super_admin')->group(function () {

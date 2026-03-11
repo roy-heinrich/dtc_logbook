@@ -5,24 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $pageTitle ?? 'Admin' }} | DTC Logbook</title>
-    <style>
-        html { color-scheme: light; }
-        html.dark { color-scheme: dark; }
-    </style>
     
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-</head>
-<body class="min-h-screen shader-bg text-slate-900 dark:text-slate-100">
+    <link rel="preload" as="image" href="{{ asset('images/background.webp') }}">
+
+    <style>
+        html.theme-preload *,
+        html.theme-preload *::before,
+        html.theme-preload *::after {
+            transition: none !important;
+            animation: none !important;
+        }
+    </style>
+
     <script>
         (function () {
+            document.documentElement.classList.add('theme-preload');
             const theme = localStorage.getItem('theme');
-            if (theme === 'light') {
-                document.documentElement.classList.remove('dark');
-            } else {
+            const isDark = theme !== 'light';
+            if (isDark) {
                 document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
             }
+            requestAnimationFrame(() => {
+                document.documentElement.classList.remove('theme-preload');
+            });
         })();
     </script>
+
+    @stack('styles')
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+</head>
+<body class="min-h-screen shader-bg text-slate-700 dark:text-slate-100" style="--shader-bg-image: url('{{ asset('images/background.webp') }}');">
+    @include('components.global-toasts')
+
     <div class="flex min-h-screen pt-20">
         @include('admin.partials.sidebar')
 
@@ -30,12 +46,6 @@
             @include('admin.partials.topbar', ['pageTitle' => $pageTitle ?? 'Admin'])
 
             <main class="flex-1 px-6 pb-10 pt-6 lg:px-10 max-w-full">
-                @if (session('status'))
-                    <div class="mb-6 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800 dark:border-brand-700/60 dark:bg-brand-900/30 dark:text-brand-100">
-                        {{ session('status') }}
-                    </div>
-                @endif
-
                 @yield('content')
             </main>
         </div>
@@ -54,14 +64,12 @@
                 themeToggle.checked = isDark;
             }
         }
-        
-        // Initialize theme toggle checkbox state on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            const themeToggle = document.querySelector('[data-theme-toggle]');
-            if (themeToggle) {
-                themeToggle.checked = document.documentElement.classList.contains('dark');
-            }
-        });
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(() => {});
+            });
+        }
     </script>
 </body>
 </html>

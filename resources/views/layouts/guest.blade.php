@@ -6,30 +6,41 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>{{ config('app.name', 'Tech4ED Logbook|Admin') }}</title>
+        
+        <link rel="preload" as="image" href="{{ asset('images/login_background.webp') }}">
+
+        <style>
+            html.theme-preload *,
+            html.theme-preload *::before,
+            html.theme-preload *::after {
+                transition: none !important;
+                animation: none !important;
+            }
+        </style>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
-        <style>
-            html { color-scheme: light; }
-            html.dark { color-scheme: dark; }
-        </style>
-
-        <!-- Scripts -->
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
-    </head>
-    <body class="font-sans text-gray-900 dark:text-gray-100 antialiased login-bg">
         <script>
             (function () {
+                document.documentElement.classList.add('theme-preload');
                 const theme = localStorage.getItem('theme');
                 if (theme === 'light') {
                     document.documentElement.classList.remove('dark');
                 } else {
                     document.documentElement.classList.add('dark');
                 }
+                requestAnimationFrame(() => {
+                    document.documentElement.classList.remove('theme-preload');
+                });
             })();
         </script>
+
+        <!-- Scripts -->
+        @vite(['resources/css/app.css', 'resources/js/app.js'])
+    </head>
+    <body class="font-sans text-gray-900 dark:text-gray-100 antialiased login-bg" style="--login-bg-image: url('{{ asset('images/login_background.webp') }}');">
         <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0">
             <div>
                 <a href="/">
@@ -41,5 +52,13 @@
                 {{ $slot }}
             </div>
         </div>
+
+        <script>
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/sw.js').catch(() => {});
+                });
+            }
+        </script>
     </body>
 </html>

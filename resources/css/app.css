@@ -19,8 +19,10 @@
 	.shader-bg {
 		position: relative;
 		min-height: 100vh;
-		background-image: url('/images/background.webp');
+		background-color: #cbd5e1;
+		background-image: var(--shader-bg-image, url('/images/background.webp'));
 		background-size: cover;
+		background-repeat: no-repeat;
 		background-position: center;
 		background-attachment: fixed;
 		overflow-x: hidden;
@@ -38,16 +40,22 @@
 		z-index: 0;
 	}
 	
+	html:not(.dark) .shader-bg::before {
+		background: rgba(248, 249, 250, 0.45);
+	}
+	
 	.login-bg {
 		position: relative;
 		min-height: 100vh;
-		background-image: url('/images/login_background.webp');
+		background-color: #cbd5e1;
+		background-image: var(--login-bg-image, url('/images/login_background.webp'));
 		background-size: cover;
+		background-repeat: no-repeat;
 		background-position: center;
 		background-attachment: fixed;
 		overflow-x: hidden;
 	}
-	
+
 	.login-bg::before {
 		content: '';
 		position: fixed;
@@ -74,44 +82,17 @@
 }
 
 @layer components {
-	/* Frosted glass card effect */
+	/* Clean card - Uncodixfy style */
 	.glass-card {
-		background: rgba(255, 255, 255, 0.25);
-		backdrop-filter: blur(12px);
-		-webkit-backdrop-filter: blur(12px);
-		border: 1px solid rgba(255, 255, 255, 0.3);
-		will-change: transform;
-		transform: translateZ(0);
-		contain: layout style paint;
-		color: var(--color-slate-900);
-	}
-	
-	.glass-card * {
-		color: inherit;
-	}
-
-	.glass-card .text-slate-400,
-	.glass-card .text-slate-500,
-	.glass-card .text-slate-600,
-	.glass-card .text-gray-400,
-	.glass-card .text-gray-500,
-	.glass-card .text-gray-600 {
-		color: var(--color-slate-900);
+		background: #e8eaed;
+		border: 1px solid #d1d5db;
+		box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08);
 	}
 	
 	.dark .glass-card {
-		background: rgba(15, 23, 42, 0.4);
-		border: 1px solid rgba(148, 163, 184, 0.2);
-		color: var(--color-slate-100);
-	}
-
-	.dark .glass-card .text-slate-400,
-	.dark .glass-card .text-slate-500,
-	.dark .glass-card .text-slate-600,
-	.dark .glass-card .text-gray-400,
-	.dark .glass-card .text-gray-500,
-	.dark .glass-card .text-gray-600 {
-		color: var(--color-slate-300);
+		background: #1e293b;
+		border: 1px solid #334155;
+		box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
 	}
 	
 	/* switch settings */

@@ -1,8 +1,11 @@
 import './bootstrap';
 
 import Alpine from 'alpinejs';
+import { Chart, registerables } from 'chart.js';
 
 window.Alpine = Alpine;
+Chart.register(...registerables);
+window.Chart = Chart;
 
 // Register stickyHeader BEFORE Alpine.start()
 Alpine.data('stickyHeader', () => ({
@@ -211,7 +214,24 @@ const syncThemeToggle = () => {
 	if (!toggle) {
 		return;
 	}
-	toggle.checked = document.documentElement.classList.contains('dark');
+
+	const isDark = document.documentElement.classList.contains('dark');
+	if (toggle.tagName === 'INPUT' && toggle.type === 'checkbox') {
+		toggle.checked = isDark;
+		return;
+	}
+
+	toggle.setAttribute('aria-pressed', String(isDark));
+	const sunIcon = toggle.querySelector('[data-theme-icon-sun]');
+	const moonIcon = toggle.querySelector('[data-theme-icon-moon]');
+
+	if (sunIcon) {
+		sunIcon.classList.toggle('hidden', isDark);
+	}
+
+	if (moonIcon) {
+		moonIcon.classList.toggle('hidden', !isDark);
+	}
 };
 
 const initTheme = () => {
@@ -229,9 +249,14 @@ const initTheme = () => {
 
 window.toggleTheme = () => {
 	const toggle = document.querySelector('[data-theme-toggle]');
-	const isDark = toggle ? toggle.checked : document.documentElement.classList.contains('dark');
-	localStorage.setItem('theme', isDark ? 'dark' : 'light');
-	setThemeClass(isDark ? 'dark' : 'light');
+	const currentIsDark = document.documentElement.classList.contains('dark');
+	const nextIsDark = toggle && toggle.tagName === 'INPUT' && toggle.type === 'checkbox'
+		? toggle.checked
+		: !currentIsDark;
+
+	localStorage.setItem('theme', nextIsDark ? 'dark' : 'light');
+	setThemeClass(nextIsDark ? 'dark' : 'light');
+	syncThemeToggle();
 };
 
 initTheme();
