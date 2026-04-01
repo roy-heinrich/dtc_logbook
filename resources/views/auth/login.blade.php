@@ -1,6 +1,6 @@
 <x-guest-layout>
     <!-- Session Status -->
-    <form method="POST" action="{{ route('login') }}" data-loading-overlay="true" data-loading-text="Logging in..." data-await-success="true" data-success-text="Logged in" data-success-delay="700">
+    <form method="POST" action="{{ route('login') }}" data-loading-overlay="true" data-loading-text="Logging in...">
         @csrf
 
         <!-- Email Address -->

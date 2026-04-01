@@ -229,7 +229,7 @@
                         <canvas id="trainingModesChart" data-slices='@json($trainingModeChartData['slices'])'></canvas>
                     </div>
                     <div class="flex-1 min-w-0 w-full">
-                        <div class="h-36 overflow-y-scroll scroll-container dashboard-scroll">
+                        <div class="h-36 overflow-hidden scroll-container dashboard-scroll">
                             <div class="pr-6 space-y-2">
                             @foreach ($trainingModeChartData['slices'] as $slice)
                                 <div class="flex justify-between items-center gap-3 text-sm md:text-base">
