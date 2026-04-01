@@ -192,10 +192,6 @@
     <div id="previewContainer" class="space-y-6">
         <!-- Preview will be loaded here via AJAX -->
     </div>
-
-    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-        Filters are applied automatically. Select dates and service type to preview export data.
-    </div>
 </div>
 @endsection
 
