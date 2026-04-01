@@ -7,14 +7,25 @@ window.Alpine = Alpine;
 // Register stickyHeader BEFORE Alpine.start()
 Alpine.data('stickyHeader', () => ({
 	scrolled: false,
+	hidden: false,
 	mobileMenuOpen: false,
 	threshold: 50,
+	lastScrollY: 0,
 	
 	handleScroll() {
 		const currentScrollY = window.scrollY;
 		
 		// Check if scrolled past threshold
 		this.scrolled = currentScrollY > this.threshold;
+		
+		// Hide header when scrolling down, show when scrolling up
+		if (currentScrollY > this.lastScrollY + 10) {
+			this.hidden = true;
+		} else if (currentScrollY < this.lastScrollY - 10) {
+			this.hidden = false;
+		}
+		
+		this.lastScrollY = currentScrollY;
 	},
 
 	toggleMobileMenu() {

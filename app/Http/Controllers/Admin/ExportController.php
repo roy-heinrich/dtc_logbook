@@ -494,7 +494,7 @@ class ExportController extends Controller
 
             // Warning about limited records
             if ($totalActivities > count($activities)) {
-                $html .= '<div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700/60 dark:bg-amber-900/30 dark:text-amber-100">';
+                $html .= '<div class="rounded-xl border border-amber-300 bg-amber-100 px-4 py-3 text-sm font-medium text-amber-900 dark:border-amber-600 dark:bg-amber-950 dark:text-amber-200">';
                 $html .= 'Showing ' . count($activities) . ' of ' . $totalActivities . ' activities. Export to see all records.';
                 $html .= '</div>';
             }
