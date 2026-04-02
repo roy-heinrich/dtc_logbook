@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
+use App\Jobs\SendPasswordResetEmail;
 use App\Support\CacheVersion;
-use App\Services\PhpMailerService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\URL;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 
 class Admin extends Authenticatable
@@ -88,27 +87,7 @@ class Admin extends Authenticatable
      */
     public function sendPasswordResetNotification($token): void
     {
-        $resetUrl = URL::route('password.reset', [
-            'token' => $token,
-            'email' => $this->email,
-        ], true);
-
-        $expires = config('auth.passwords.' . config('auth.defaults.passwords') . '.expire');
-        $subject = 'Reset your password';
-        $recipientName = $this->name ?: $this->email;
-
-        $htmlBody = view('emails.password-reset', [
-            'name' => $recipientName,
-            'resetUrl' => $resetUrl,
-            'expires' => $expires,
-        ])->render();
-
-        app(PhpMailerService::class)->send(
-            $this->email,
-            $recipientName,
-            $subject,
-            $htmlBody
-        );
+        SendPasswordResetEmail::dispatch((int) $this->getKey(), (string) $token);
     }
 
     /**

@@ -24,6 +24,9 @@ class PhpMailerService
             };
             $mailer->Host = (string) config('services.phpmailer.host');
             $mailer->Port = (int) config('services.phpmailer.port');
+            $mailer->Timeout = (int) config('services.phpmailer.timeout', 10);
+            $mailer->Timelimit = (int) config('services.phpmailer.timelimit', 15);
+            $mailer->SMTPKeepAlive = false;
 
             $username = (string) config('services.phpmailer.username');
             $password = (string) config('services.phpmailer.password');
