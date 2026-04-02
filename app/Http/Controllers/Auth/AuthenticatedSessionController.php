@@ -26,46 +26,53 @@ class AuthenticatedSessionController extends Controller
      */
     public function store(LoginRequest $request): RedirectResponse
     {
-        Log::info('login.attempt.started', [
-            'email' => (string) $request->input('email', ''),
-            'ip' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-            'cache_store' => config('cache.default'),
-            'redis_client' => config('database.redis.client'),
-            'has_redis_url' => !empty(env('REDIS_URL')),
-        ]);
-
         try {
+            Log::info('login.attempt.started', [
+                'email' => (string) $request->input('email', ''),
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'cache_store' => config('cache.default'),
+                'redis_client' => config('database.redis.client'),
+                'has_redis_url' => !empty(env('REDIS_URL')),
+            ]);
+
             $request->authenticate();
+
+            $admin = Auth::guard('admin')->user();
+            Log::info('login.attempt.authenticated', [
+                'admin_id' => $admin?->id,
+                'email' => $admin?->email,
+            ]);
+
+            $request->session()->regenerate();
+
+            Log::info('login.attempt.session_regenerated', [
+                'session_id' => $request->session()->getId(),
+            ]);
+
+            $target = route('admin.dashboard', absolute: false);
+            Log::info('login.attempt.redirecting', [
+                'target' => $target,
+            ]);
+
+            return redirect()->intended($target);
         } catch (Throwable $exception) {
             Log::error('login.attempt.failed', [
                 'email' => (string) $request->input('email', ''),
                 'ip' => $request->ip(),
                 'exception' => get_class($exception),
                 'message' => $exception->getMessage(),
+                'file' => $exception->getFile(),
+                'line' => $exception->getLine(),
             ]);
 
-            throw $exception;
+            $showActualErrors = filter_var(env('SHOW_ACTUAL_ERRORS', false), FILTER_VALIDATE_BOOL);
+            $message = $showActualErrors
+                ? 'Login failed: ' . $exception->getMessage()
+                : 'Login failed. Please try again.';
+
+            return back()->withInput($request->only('email', 'remember'))->with('error', $message);
         }
-
-        $admin = Auth::guard('admin')->user();
-        Log::info('login.attempt.authenticated', [
-            'admin_id' => $admin?->id,
-            'email' => $admin?->email,
-        ]);
-
-        $request->session()->regenerate();
-
-        Log::info('login.attempt.session_regenerated', [
-            'session_id' => $request->session()->getId(),
-        ]);
-
-        $target = route('admin.dashboard', absolute: false);
-        Log::info('login.attempt.redirecting', [
-            'target' => $target,
-        ]);
-
-        return redirect()->intended($target);
     }
 
     /**

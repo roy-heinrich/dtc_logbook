@@ -252,6 +252,15 @@ class DashboardController extends Controller
                 'line' => $exception->getLine(),
             ]);
 
+            $showActualErrors = filter_var(env('SHOW_ACTUAL_ERRORS', false), FILTER_VALIDATE_BOOL);
+            if ($showActualErrors) {
+                return response()->make(
+                    '<h1>Dashboard Error</h1><pre style="white-space:pre-wrap">' . e($exception->getMessage()) . '</pre>',
+                    500,
+                    ['Content-Type' => 'text/html; charset=UTF-8']
+                );
+            }
+
             throw $exception;
         }
     }
