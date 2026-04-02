@@ -11,11 +11,22 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class DashboardController extends Controller
 {
     public function index(Request $request)
     {
+        Log::info('dashboard.index.started', [
+            'admin_id' => auth('admin')->id(),
+            'cache_store' => config('cache.default'),
+            'redis_client' => config('database.redis.client'),
+            'has_redis_url' => !empty(env('REDIS_URL')),
+            'query' => $request->query(),
+        ]);
+
+        try {
         $todayKey = Carbon::today()->format('Y-m-d');
         $todayStart = Carbon::today()->startOfDay();
         $todayEnd = Carbon::today()->endOfDay();
@@ -204,7 +215,7 @@ class DashboardController extends Controller
             ? RealtimeToken::issue($adminId, 'dashboard', (int) env('WEBSOCKET_TOKEN_TTL', 60))
             : null;
 
-        return view('admin.dashboard', [
+        $response = view('admin.dashboard', [
             'totalUsers' => $totalUsers,
             'totalActivities' => $totalActivities,
             'todayActivities' => $todayActivities,
@@ -226,6 +237,23 @@ class DashboardController extends Controller
             'serviceFilter' => ['year' => $serviceYear, 'month' => $serviceMonth],
             'trainingFilter' => ['year' => $trainingYear, 'month' => $trainingMonth],
         ]);
+
+        Log::info('dashboard.index.completed', [
+            'admin_id' => auth('admin')->id(),
+        ]);
+
+        return $response;
+        } catch (Throwable $exception) {
+            Log::error('dashboard.index.failed', [
+                'admin_id' => auth('admin')->id(),
+                'exception' => get_class($exception),
+                'message' => $exception->getMessage(),
+                'file' => $exception->getFile(),
+                'line' => $exception->getLine(),
+            ]);
+
+            throw $exception;
+        }
     }
 
     private function sanitizeYear(mixed $year, $availableYears, ?int $defaultYear): ?int

@@ -7,7 +7,9 @@ use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
+use Throwable;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -24,11 +26,46 @@ class AuthenticatedSessionController extends Controller
      */
     public function store(LoginRequest $request): RedirectResponse
     {
-        $request->authenticate();
+        Log::info('login.attempt.started', [
+            'email' => (string) $request->input('email', ''),
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'cache_store' => config('cache.default'),
+            'redis_client' => config('database.redis.client'),
+            'has_redis_url' => !empty(env('REDIS_URL')),
+        ]);
+
+        try {
+            $request->authenticate();
+        } catch (Throwable $exception) {
+            Log::error('login.attempt.failed', [
+                'email' => (string) $request->input('email', ''),
+                'ip' => $request->ip(),
+                'exception' => get_class($exception),
+                'message' => $exception->getMessage(),
+            ]);
+
+            throw $exception;
+        }
+
+        $admin = Auth::guard('admin')->user();
+        Log::info('login.attempt.authenticated', [
+            'admin_id' => $admin?->id,
+            'email' => $admin?->email,
+        ]);
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('admin.dashboard', absolute: false));
+        Log::info('login.attempt.session_regenerated', [
+            'session_id' => $request->session()->getId(),
+        ]);
+
+        $target = route('admin.dashboard', absolute: false);
+        Log::info('login.attempt.redirecting', [
+            'target' => $target,
+        ]);
+
+        return redirect()->intended($target);
     }
 
     /**
