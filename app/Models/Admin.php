@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\CacheVersion;
 use App\Services\PhpMailerService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\URL;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 
@@ -114,7 +116,19 @@ class Admin extends Authenticatable
      */
     public function isSuperAdmin(): bool
     {
-        return $this->role && $this->role->isSuperAdmin();
+        if ($this->role_id === null) {
+            return false;
+        }
+
+        $superAdminRoleId = Cache::remember(CacheVersion::key('roles', 'super_admin:id'), 300, function () {
+            return Role::query()->where('name', 'super_admin')->value('id');
+        });
+
+        if ($superAdminRoleId === null) {
+            return false;
+        }
+
+        return (int) $this->role_id === (int) $superAdminRoleId;
     }
 
     /**

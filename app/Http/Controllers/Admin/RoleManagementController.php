@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\Permission;
+use App\Support\CacheVersion;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -60,6 +61,8 @@ class RoleManagementController extends Controller
             $role->permissions()->sync($validated['permissions']);
         }
 
+        CacheVersion::bump('roles');
+
         return redirect()->route('admin.roles.index')
             ->with('success', 'Role created successfully.');
     }
@@ -114,6 +117,8 @@ class RoleManagementController extends Controller
 
         $role->permissions()->sync($validated['permissions'] ?? []);
 
+        CacheVersion::bump('roles');
+
         return redirect()->route('admin.roles.index')
             ->with('success', 'Role updated successfully.');
     }
@@ -137,6 +142,8 @@ class RoleManagementController extends Controller
 
         $role->delete();
 
+        CacheVersion::bump('roles');
+
         return redirect()->route('admin.roles.index')
             ->with('success', 'Role deleted successfully.');
     }
@@ -155,6 +162,8 @@ class RoleManagementController extends Controller
 
         $role->restore();
 
+        CacheVersion::bump('roles');
+
         return redirect()->route('admin.roles.trash')
             ->with('success', 'Role restored successfully.');
     }
@@ -172,6 +181,8 @@ class RoleManagementController extends Controller
         }
 
         $role->forceDelete();
+
+        CacheVersion::bump('roles');
 
         return redirect()->route('admin.roles.trash')
             ->with('success', 'Role permanently deleted.');

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Service;
+use App\Support\CacheVersion;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -38,6 +39,7 @@ class ServiceController extends Controller
         ]);
 
         Service::create($data);
+        CacheVersion::bumpMany(['dashboard', 'reports']);
 
         return redirect()
             ->route('admin.services.index')
@@ -63,6 +65,7 @@ class ServiceController extends Controller
         ]);
 
         $service->update($data);
+        CacheVersion::bumpMany(['dashboard', 'reports']);
 
         return redirect()
             ->route('admin.services.index')
@@ -72,6 +75,7 @@ class ServiceController extends Controller
     public function destroy(Service $service)
     {
         $service->delete();
+        CacheVersion::bumpMany(['dashboard', 'reports']);
 
         return redirect()
             ->route('admin.services.index')
@@ -82,6 +86,7 @@ class ServiceController extends Controller
     {
         $service = Service::onlyTrashed()->findOrFail($serviceId);
         $service->restore();
+        CacheVersion::bumpMany(['dashboard', 'reports']);
 
         return redirect()
             ->route('admin.services.trash')
@@ -92,6 +97,7 @@ class ServiceController extends Controller
     {
         $service = Service::onlyTrashed()->findOrFail($serviceId);
         $service->forceDelete();
+        CacheVersion::bumpMany(['dashboard', 'reports']);
 
         return redirect()
             ->route('admin.services.trash')

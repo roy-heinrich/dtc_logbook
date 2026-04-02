@@ -9,3 +9,5 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('app:purge-soft-deletes')->daily();
+Schedule::command('cache:prune')->hourly();
+Schedule::command('cache:clear')->dailyAt('03:00');

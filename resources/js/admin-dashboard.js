@@ -1,4 +1,5 @@
 import { Chart, registerables } from 'chart.js';
+import './dashboard-realtime';
 
 Chart.register(...registerables);
 window.Chart = Chart;

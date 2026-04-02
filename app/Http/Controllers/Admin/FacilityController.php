@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Facility;
+use App\Support\CacheVersion;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -38,6 +39,7 @@ class FacilityController extends Controller
         ]);
 
         Facility::create($data);
+        CacheVersion::bumpMany(['dashboard', 'reports']);
 
         return redirect()
             ->route('admin.facilities.index')
@@ -63,6 +65,7 @@ class FacilityController extends Controller
         ]);
 
         $facility->update($data);
+        CacheVersion::bumpMany(['dashboard', 'reports']);
 
         return redirect()
             ->route('admin.facilities.index')
@@ -72,6 +75,7 @@ class FacilityController extends Controller
     public function destroy(Facility $facility)
     {
         $facility->delete();
+        CacheVersion::bumpMany(['dashboard', 'reports']);
 
         return redirect()
             ->route('admin.facilities.index')
@@ -82,6 +86,7 @@ class FacilityController extends Controller
     {
         $facility = Facility::onlyTrashed()->findOrFail($facilityId);
         $facility->restore();
+        CacheVersion::bumpMany(['dashboard', 'reports']);
 
         return redirect()
             ->route('admin.facilities.trash')
@@ -92,6 +97,7 @@ class FacilityController extends Controller
     {
         $facility = Facility::onlyTrashed()->findOrFail($facilityId);
         $facility->forceDelete();
+        CacheVersion::bumpMany(['dashboard', 'reports']);
 
         return redirect()
             ->route('admin.facilities.trash')

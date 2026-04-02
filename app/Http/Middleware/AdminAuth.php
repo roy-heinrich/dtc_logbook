@@ -16,17 +16,20 @@ class AdminAuth
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!Auth::guard('admin')->check()) {
+        $guard = Auth::guard('admin');
+
+        if (!$guard->check()) {
             return redirect()->route('login');
         }
 
+        $admin = $guard->user();
+
         // Check if admin account is active
-        if (!Auth::guard('admin')->user()->is_active) {
-            Auth::guard('admin')->logout();
+        if (!$admin->is_active) {
+            $guard->logout();
             return redirect()->route('login')->with('error', 'Your account has been deactivated.');
         }
 
-        $admin = Auth::guard('admin')->user();
         if (
             $admin->must_change_password &&
             ! $request->routeIs('profile.edit') &&

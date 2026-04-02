@@ -10,20 +10,20 @@
         </div>
         <div class="rounded-lg glass-card p-5 h-full min-h-[132px] flex flex-col justify-between">
             <div class="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Activities</div>
-            <div class="mt-3 text-3xl font-semibold text-slate-900 dark:text-white">{{ number_format($totalActivities) }}</div>
+            <div class="mt-3 text-3xl font-semibold text-slate-900 dark:text-white" data-dashboard-total-activities>{{ number_format($totalActivities) }}</div>
         </div>
         <div class="rounded-lg glass-card p-5 h-full min-h-[132px] flex flex-col justify-between">
             <div class="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Today</div>
-            <div class="mt-3 text-3xl font-semibold text-slate-900 dark:text-white">{{ number_format($todayActivities) }}</div>
+            <div class="mt-3 text-3xl font-semibold text-slate-900 dark:text-white" data-dashboard-today-activities>{{ number_format($todayActivities) }}</div>
         </div>
-        <div class="rounded-lg glass-card p-5 h-full min-h-[132px] flex flex-col justify-between">
+        <div class="rounded-lg glass-card latest-activity-card p-5 h-full min-h-[132px] flex flex-col justify-between">
             <div class="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Latest Activity</div>
             <div class="mt-3 text-sm md:text-base text-slate-800 dark:text-slate-300">
                 @if ($latestActivity)
-                    <div class="font-semibold text-slate-900 dark:text-white">
+                    <div class="font-semibold text-slate-900 dark:text-white latest-activity-name">
                         {{ $latestActivity->user?->lname_user }}, {{ $latestActivity->user?->fname_user }}
                     </div>
-                    <div class="text-slate-600 dark:text-slate-400">{{ $latestActivity->activity_at?->timezone(config('app.timezone'))->format('Y-m-d H:i') }}</div>
+                    <div class="text-slate-600 dark:text-slate-400 latest-activity-time">{{ $latestActivity->activity_at?->timezone(config('app.timezone'))->format('Y-m-d H:i') }}</div>
                 @else
                     No activity data available
                 @endif
@@ -264,6 +264,12 @@
 @endsection
 
 @push('scripts')
+    <script>
+        window.dashboardRealtimeConfig = {
+            token: @json($realtimeToken),
+            wsUrl: @json(env('WEBSOCKET_PUBLIC_URL', '')),
+        };
+    </script>
     @vite('resources/js/admin-dashboard.js')
     <style>
         .scroll-container {

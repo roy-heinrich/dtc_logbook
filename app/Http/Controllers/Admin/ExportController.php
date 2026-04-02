@@ -4,7 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Activity;
+use App\Support\CacheVersion;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use RuntimeException;
 use Symfony\Component\Process\Process;
@@ -13,31 +17,32 @@ class ExportController extends Controller
 {
     public function index(Request $request)
     {
-        $serviceTypes = Activity::query()
-            ->whereNotNull('service_type')
-            ->where('service_type', '!=', '')
-            ->distinct()
-            ->orderBy('service_type')
-            ->pluck('service_type');
+        $serviceTypes = Cache::remember(CacheVersion::key('reports', 'service_types'), 300, function () {
+            return Activity::query()
+                ->whereNotNull('service_type')
+                ->where('service_type', '!=', '')
+                ->distinct()
+                ->orderBy('service_type')
+                ->pluck('service_type');
+        });
 
         // Get preview data based on applied filters
         $query = $this->buildActivitiesQuery($request);
+        $countQuery = $this->buildActivitiesQuery($request, false);
         $activities = (clone $query)
             ->orderByDesc('activity_at')
             ->limit(10)
             ->get();
 
-        $totalUsers = (clone $query)->distinct('user_id')->count('user_id');
-        $totalActivities = (clone $query)->count();
-        $todayActivities = (clone $query)->whereDate('activity_at', today())->count();
+        $stats = $this->getSummaryStats($countQuery);
         $filterSummary = $this->getFilterSummary($request);
 
         return view('admin.reports.index', [
             'serviceTypes' => $serviceTypes,
             'activities' => $activities,
-            'totalUsers' => $totalUsers,
-            'totalActivities' => $totalActivities,
-            'todayActivities' => $todayActivities,
+            'totalUsers' => $stats['totalUsers'],
+            'totalActivities' => $stats['totalActivities'],
+            'todayActivities' => $stats['todayActivities'],
             'filterSummary' => $filterSummary,
         ]);
     }
@@ -268,13 +273,15 @@ class ExportController extends Controller
     public function exportPdf(Request $request)
     {
         $query = $this->buildActivitiesQuery($request);
+        $countQuery = $this->buildActivitiesQuery($request, false);
         $activities = (clone $query)
             ->orderByDesc('activity_at')
             ->get();
 
-        $totalUsers = (clone $query)->distinct('user_id')->count('user_id');
-        $totalActivities = (clone $query)->count();
-        $todayActivities = (clone $query)->whereDate('activity_at', today())->count();
+        $stats = $this->getSummaryStats($countQuery);
+        $totalUsers = $stats['totalUsers'];
+        $totalActivities = $stats['totalActivities'];
+        $todayActivities = $stats['todayActivities'];
         $filterSummary = $this->getFilterSummary($request);
 
         $html = '<html>';
@@ -405,14 +412,16 @@ class ExportController extends Controller
     public function preview(Request $request)
     {
         $query = $this->buildActivitiesQuery($request);
+        $countQuery = $this->buildActivitiesQuery($request, false);
         $activities = (clone $query)
             ->orderByDesc('activity_at')
             ->limit(10)
             ->get();
 
-        $totalUsers = (clone $query)->distinct('user_id')->count('user_id');
-        $totalActivities = (clone $query)->count();
-        $todayActivities = (clone $query)->whereDate('activity_at', today())->count();
+        $stats = $this->getSummaryStats($countQuery);
+        $totalUsers = $stats['totalUsers'];
+        $totalActivities = $stats['totalActivities'];
+        $todayActivities = $stats['todayActivities'];
         $filterSummary = $this->getFilterSummary($request);
 
         // Build HTML preview
@@ -506,22 +515,28 @@ class ExportController extends Controller
         return response($html, 200, ['Content-Type' => 'text/html; charset=utf-8']);
     }
 
-    private function buildActivitiesQuery(Request $request)
+    private function buildActivitiesQuery(Request $request, bool $withUser = true): Builder
     {
-        $query = Activity::query()->with('user');
+        $query = Activity::query();
+
+        if ($withUser) {
+            $query->with([
+                'user:user_id,fname_user,mname_user,lname_user,suffix_user,number_user,sector_user,birthdate,sex_user',
+            ]);
+        }
 
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
 
         if (!empty($startDate) && !empty($endDate)) {
             $query->whereBetween('activity_at', [
-                $startDate . ' 00:00:00',
-                $endDate . ' 23:59:59',
+                Carbon::parse($startDate)->startOfDay(),
+                Carbon::parse($endDate)->endOfDay(),
             ]);
         } elseif (!empty($startDate)) {
-            $query->whereDate('activity_at', '>=', $startDate);
+            $query->where('activity_at', '>=', Carbon::parse($startDate)->startOfDay());
         } elseif (!empty($endDate)) {
-            $query->whereDate('activity_at', '<=', $endDate);
+            $query->where('activity_at', '<=', Carbon::parse($endDate)->endOfDay());
         }
 
         $serviceType = $request->input('service_type');
@@ -530,6 +545,27 @@ class ExportController extends Controller
         }
 
         return $query;
+    }
+
+    private function getSummaryStats(Builder $query): array
+    {
+        $todayStart = Carbon::today()->startOfDay();
+        $todayEnd = Carbon::today()->endOfDay();
+
+        $stats = (clone $query)
+            ->selectRaw('COUNT(*) as total_activities')
+            ->selectRaw('COUNT(DISTINCT user_id) as total_users')
+            ->selectRaw('SUM(CASE WHEN activity_at BETWEEN ? AND ? THEN 1 ELSE 0 END) as today_activities', [
+                $todayStart,
+                $todayEnd,
+            ])
+            ->first();
+
+        return [
+            'totalUsers' => (int) ($stats?->total_users ?? 0),
+            'totalActivities' => (int) ($stats?->total_activities ?? 0),
+            'todayActivities' => (int) ($stats?->today_activities ?? 0),
+        ];
     }
 
     private function getFilterSummary(Request $request): array

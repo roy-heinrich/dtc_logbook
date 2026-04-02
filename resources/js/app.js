@@ -278,9 +278,61 @@ const optimizeImageLoading = () => {
 	});
 };
 
+const initGlobalSubmitLoading = () => {
+	const loadingOverlay = document.getElementById('global-submit-loading-overlay');
+	const loadingTitle = document.getElementById('global-submit-loading-title');
+
+	if (!loadingOverlay || !loadingTitle) {
+		return;
+	}
+
+	const resolveRequestMethod = (form) => {
+		const formMethod = (form.getAttribute('method') || 'GET').toUpperCase();
+		if (formMethod !== 'POST') {
+			return formMethod;
+		}
+
+		const spoofedMethod = form.querySelector('input[name="_method"]');
+		return (spoofedMethod?.value || formMethod).toUpperCase();
+	};
+
+	document.addEventListener('submit', (event) => {
+		const submittedForm = event.target;
+		if (!(submittedForm instanceof HTMLFormElement)) {
+			return;
+		}
+
+		if (submittedForm.dataset.globalLoading === 'false') {
+			return;
+		}
+
+		const requestMethod = resolveRequestMethod(submittedForm);
+		if (requestMethod === 'GET') {
+			return;
+		}
+
+		if (submittedForm.dataset.submitting === 'true') {
+			event.preventDefault();
+			return;
+		}
+
+		submittedForm.dataset.submitting = 'true';
+		loadingTitle.textContent = submittedForm.dataset.loadingText || 'Saving changes...';
+		loadingOverlay.classList.remove('hidden');
+		loadingOverlay.classList.add('flex');
+		loadingOverlay.setAttribute('aria-hidden', 'false');
+		document.body.classList.add('overflow-hidden');
+
+		submittedForm.querySelectorAll('button[type="submit"], input[type="submit"]').forEach((button) => {
+			button.disabled = true;
+		});
+	});
+};
+
 document.addEventListener('DOMContentLoaded', () => {
 	initTheme();
 	optimizeImageLoading();
+	initGlobalSubmitLoading();
 });
 
 initTheme();

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\LoginLog;
 use App\Models\Role;
+use App\Support\CacheVersion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -18,7 +19,9 @@ class AdminManagementController extends Controller
      */
     public function index()
     {
-        $admins = Admin::with('role')->latest()
+        $admins = Admin::select(['id', 'name', 'email', 'role_id', 'is_active', 'created_at', 'updated_at'])
+            ->with(['role:id,name,display_name'])
+            ->latest()
             ->paginate(15, ['*'], 'admins_page')
             ->withQueryString();
         $superAdminCount = Admin::whereHas('role', function ($query) {
@@ -40,7 +43,11 @@ class AdminManagementController extends Controller
      */
     public function trash()
     {
-        $admins = Admin::onlyTrashed()->with('role')->latest()->paginate(15);
+        $admins = Admin::onlyTrashed()
+            ->select(['id', 'name', 'email', 'role_id', 'is_active', 'deleted_at', 'created_at', 'updated_at'])
+            ->with(['role:id,name,display_name'])
+            ->latest()
+            ->paginate(15);
         $superAdminCount = Admin::whereHas('role', function ($query) {
             $query->where('name', 'super_admin');
         })->count();
@@ -53,7 +60,7 @@ class AdminManagementController extends Controller
      */
     public function create()
     {
-        $roles = Role::all();
+        $roles = Role::select(['id', 'name', 'display_name', 'description'])->orderBy('display_name')->get();
         return view('admin.admins.create', compact('roles'));
     }
 
@@ -80,6 +87,8 @@ class AdminManagementController extends Controller
             'email_verified_at' => now(),
         ]);
 
+        CacheVersion::bump('roles');
+
         return redirect()->route('admin.admins.index')
             ->with('success', 'Admin created successfully.');
     }
@@ -103,7 +112,7 @@ class AdminManagementController extends Controller
             abort(403, 'You cannot edit a super admin account.');
         }
 
-        $roles = Role::all();
+        $roles = Role::select(['id', 'name', 'display_name', 'description'])->orderBy('display_name')->get();
         return view('admin.admins.edit', compact('admin', 'roles'));
     }
 
@@ -138,6 +147,8 @@ class AdminManagementController extends Controller
 
         $admin->update($updateData);
 
+        CacheVersion::bump('roles');
+
         return redirect()->route('admin.admins.index')
             ->with('success', 'Admin updated successfully.');
     }
@@ -167,6 +178,8 @@ class AdminManagementController extends Controller
 
         $admin->delete();
 
+        CacheVersion::bump('roles');
+
         return redirect()->route('admin.admins.index')
             ->with('success', 'Admin deleted successfully.');
     }
@@ -183,6 +196,8 @@ class AdminManagementController extends Controller
         }
 
         $admin->restore();
+
+        CacheVersion::bump('roles');
 
         return redirect()->route('admin.admins.trash')
             ->with('success', 'Admin restored successfully.');
@@ -208,6 +223,8 @@ class AdminManagementController extends Controller
 
         $admin->forceDelete();
 
+        CacheVersion::bump('roles');
+
         return redirect()->route('admin.admins.trash')
             ->with('success', 'Admin permanently deleted.');
     }
@@ -226,6 +243,8 @@ class AdminManagementController extends Controller
         }
 
         $admin->update(['is_active' => !$admin->is_active]);
+
+        CacheVersion::bump('roles');
 
         $status = $admin->is_active ? 'activated' : 'deactivated';
         

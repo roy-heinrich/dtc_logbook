@@ -102,6 +102,14 @@ php artisan route:clear
 See [RENDER_SETUP.md](RENDER_SETUP.md) for complete deployment guide.
 For Cloudflare in front of Render, see [CLOUDFLARE_RENDER_SETUP.md](CLOUDFLARE_RENDER_SETUP.md).
 
+This repository includes a portable Render Blueprint in [render.yaml](render.yaml) that provisions:
+- `dtc-logbook` (main Laravel web service)
+- `dtc-logbook-websocket` (Socket.IO service)
+- `dtc-logbook-scheduler` (Laravel scheduler cron)
+- `dtc-logbook-redis` (managed Redis/Key Value)
+
+When creating from Blueprint, Render will prompt for `sync: false` variables (for example `WEBSOCKET_PUBLIC_URL` and `WEBSOCKET_ALLOWED_ORIGINS`).
+
 Quick start:
 1. Push code to GitHub
 2. Create account on [render.com](https://render.com)

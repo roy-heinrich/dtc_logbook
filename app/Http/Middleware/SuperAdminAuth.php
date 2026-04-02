@@ -15,11 +15,15 @@ class SuperAdminAuth
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!auth('admin')->check()) {
+        $guard = auth('admin');
+
+        if (!$guard->check()) {
             return redirect()->route('admin.login');
         }
 
-        if (!auth('admin')->user()->isSuperAdmin()) {
+        $admin = $guard->user();
+
+        if (!$admin->isSuperAdmin()) {
             abort(403, 'This action requires super admin privileges.');
         }
 

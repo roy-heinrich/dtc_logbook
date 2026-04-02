@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Activity;
 use App\Models\RegUser;
+use App\Support\CacheVersion;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class LoginLogController extends Controller
 {
@@ -22,26 +24,32 @@ class LoginLogController extends Controller
             ->when($userId, fn ($query) => $query->where('user_id', $userId))
             ->when($facility !== '', fn ($query) => $query->where('facility_used', $facility))
             ->when($serviceType !== '', fn ($query) => $query->where('service_type', $serviceType))
-            ->when($from, fn ($query) => $query->whereDate('activity_at', '>=', $from))
-            ->when($to, fn ($query) => $query->whereDate('activity_at', '<=', $to))
+            ->when($from, fn ($query) => $query->where('activity_at', '>=', $from->copy()->startOfDay()))
+            ->when($to, fn ($query) => $query->where('activity_at', '<=', $to->copy()->endOfDay()))
             ->orderByDesc('activity_at')
             ->paginate(10)
             ->withQueryString();
 
-        $users = RegUser::orderBy('lname_user')->get(['user_id', 'fname_user', 'lname_user']);
+        $users = Cache::remember(CacheVersion::key('login_logs_filters', 'users'), 300, function () {
+            return RegUser::orderBy('lname_user')->get(['user_id', 'fname_user', 'lname_user']);
+        });
 
         // Get distinct facilities and services from activities
-        $facilities = Activity::whereNotNull('facility_used')
-            ->distinct('facility_used')
-            ->pluck('facility_used')
-            ->sort()
-            ->values();
+        $facilities = Cache::remember(CacheVersion::key('login_logs_filters', 'facilities'), 300, function () {
+            return Activity::whereNotNull('facility_used')
+                ->distinct('facility_used')
+                ->pluck('facility_used')
+                ->sort()
+                ->values();
+        });
 
-        $serviceTypes = Activity::whereNotNull('service_type')
-            ->distinct('service_type')
-            ->pluck('service_type')
-            ->sort()
-            ->values();
+        $serviceTypes = Cache::remember(CacheVersion::key('login_logs_filters', 'service_types'), 300, function () {
+            return Activity::whereNotNull('service_type')
+                ->distinct('service_type')
+                ->pluck('service_type')
+                ->sort()
+                ->values();
+        });
 
         return view('admin.login-logs.index', [
             'logs' => $logs,

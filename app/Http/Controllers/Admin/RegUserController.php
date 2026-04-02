@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\RegUser;
+use App\Support\CacheVersion;
 use Illuminate\Http\Request;
 
 class RegUserController extends Controller
@@ -114,6 +115,7 @@ class RegUserController extends Controller
         ]);
 
         $reguser->update($data);
+        CacheVersion::bumpMany(['dashboard', 'activities_filters', 'login_logs_filters', 'reports']);
 
         return redirect()
             ->route('admin.regusers.edit', $reguser)
@@ -123,6 +125,7 @@ class RegUserController extends Controller
     public function destroy(RegUser $reguser)
     {
         $reguser->delete();
+        CacheVersion::bumpMany(['dashboard', 'activities_filters', 'login_logs_filters', 'reports']);
 
         return redirect()
             ->route('admin.regusers.index')
@@ -133,6 +136,7 @@ class RegUserController extends Controller
     {
         $user = RegUser::onlyTrashed()->findOrFail($reguserId);
         $user->restore();
+        CacheVersion::bumpMany(['dashboard', 'activities_filters', 'login_logs_filters', 'reports']);
 
         return redirect()
             ->route('admin.regusers.trash')
@@ -143,6 +147,7 @@ class RegUserController extends Controller
     {
         $user = RegUser::onlyTrashed()->findOrFail($reguserId);
         $user->forceDelete();
+        CacheVersion::bumpMany(['dashboard', 'activities_filters', 'login_logs_filters', 'reports']);
 
         return redirect()
             ->route('admin.regusers.trash')
@@ -152,6 +157,7 @@ class RegUserController extends Controller
     private function buildUsersQuery(string $search, string $sector)
     {
         return RegUser::query()
+            ->select(['user_id', 'fname_user', 'lname_user', 'mname_user', 'suffix_user', 'sector_user', 'number_user', 'birthdate', 'sex_user'])
             ->when($search !== '', function ($query) use ($search) {
                 // Handle comma-separated searches (e.g., "Garcia, Maria")
                 $parts = array_map('trim', explode(',', $search));

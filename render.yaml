@@ -1,3 +1,9 @@
+envVarGroups:
+  - name: dtc-shared-secrets
+    envVars:
+      - key: APP_KEY
+        generateValue: true
+
 services:
   - type: web
     name: dtc-logbook
@@ -6,9 +12,58 @@ services:
     dockerfilePath: ./Dockerfile
     healthCheckPath: /
     envVars:
+      - fromGroup: dtc-shared-secrets
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
         value: false
       - key: LOG_LEVEL
         value: error
+      - key: CACHE_STORE
+        value: redis
+      - key: DASHBOARD_REALTIME_ENABLED
+        value: false
+      - key: BROADCAST_CONNECTION
+        value: log
+      - key: BROADCAST_DRIVER
+        value: log
+      - key: REDIS_URL
+        fromService:
+          name: dtc-logbook-redis
+          type: keyvalue
+          property: connectionString
+
+  - type: cron
+    name: dtc-logbook-scheduler
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerCommand: php artisan schedule:run
+    schedule: "* * * * *"
+    envVars:
+      - fromGroup: dtc-shared-secrets
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: LOG_LEVEL
+        value: error
+      - key: CACHE_STORE
+        value: redis
+      - key: DASHBOARD_REALTIME_ENABLED
+        value: false
+      - key: BROADCAST_CONNECTION
+        value: log
+      - key: BROADCAST_DRIVER
+        value: log
+      - key: REDIS_URL
+        fromService:
+          name: dtc-logbook-redis
+          type: keyvalue
+          property: connectionString
+
+  - type: keyvalue
+    name: dtc-logbook-redis
+    plan: starter
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []

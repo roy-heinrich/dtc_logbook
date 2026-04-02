@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\ActivityAdded;
 use App\Http\Controllers\Controller;
 use App\Models\Activity;
 use App\Models\RegUser;
+use App\Support\CacheVersion;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Throwable;
 
 class ActivityController extends Controller
 {
@@ -21,26 +25,32 @@ class ActivityController extends Controller
             ->when($userId, fn ($query) => $query->where('user_id', $userId))
             ->when($facility !== '', fn ($query) => $query->where('facility_used', $facility))
             ->when($serviceType !== '', fn ($query) => $query->where('service_type', $serviceType))
-            ->when($from, fn ($query) => $query->whereDate('activity_at', '>=', $from))
-            ->when($to, fn ($query) => $query->whereDate('activity_at', '<=', $to))
+            ->when($from, fn ($query) => $query->where('activity_at', '>=', $from->copy()->startOfDay()))
+            ->when($to, fn ($query) => $query->where('activity_at', '<=', $to->copy()->endOfDay()))
             ->orderByDesc('activity_at')
             ->paginate(20)
             ->withQueryString();
 
-        $users = RegUser::orderBy('lname_user')
-            ->get(['user_id', 'fname_user', 'lname_user', 'mname_user']);
+        $users = Cache::remember(CacheVersion::key('activities_filters', 'users'), 300, function () {
+            return RegUser::orderBy('lname_user')
+                ->get(['user_id', 'fname_user', 'lname_user', 'mname_user']);
+        });
 
-        $facilities = Activity::query()
-            ->whereNotNull('facility_used')
-            ->distinct()
-            ->orderBy('facility_used')
-            ->pluck('facility_used');
+        $facilities = Cache::remember(CacheVersion::key('activities_filters', 'facilities'), 300, function () {
+            return Activity::query()
+                ->whereNotNull('facility_used')
+                ->distinct()
+                ->orderBy('facility_used')
+                ->pluck('facility_used');
+        });
 
-        $serviceTypes = Activity::query()
-            ->whereNotNull('service_type')
-            ->distinct()
-            ->orderBy('service_type')
-            ->pluck('service_type');
+        $serviceTypes = Cache::remember(CacheVersion::key('activities_filters', 'service_types'), 300, function () {
+            return Activity::query()
+                ->whereNotNull('service_type')
+                ->distinct()
+                ->orderBy('service_type')
+                ->pluck('service_type');
+        });
 
         return view('admin.activities.index', [
             'activities' => $activities,
@@ -59,8 +69,10 @@ class ActivityController extends Controller
 
     public function create()
     {
-        $users = RegUser::orderBy('lname_user')
-            ->get(['user_id', 'fname_user', 'lname_user', 'mname_user']);
+        $users = Cache::remember(CacheVersion::key('activities_filters', 'users'), 300, function () {
+            return RegUser::orderBy('lname_user')
+                ->get(['user_id', 'fname_user', 'lname_user', 'mname_user']);
+        });
 
         return view('admin.activities.create', [
             'users' => $users,
@@ -84,12 +96,24 @@ class ActivityController extends Controller
             $activityAt = $data['activity_date'] . ' ' . $time;
         }
 
-        Activity::create([
+        $activity = Activity::create([
             'user_id' => $data['user_id'],
             'facility_used' => $data['facility_used'],
             'service_type' => $data['service_type'],
             'activity_at' => $activityAt,
         ]);
+
+        // Load the user relationship for broadcasting
+        $activity->load('user');
+
+        // Broadcast the new activity to connected admins without blocking save on transport issues
+        try {
+            ActivityAdded::dispatch($activity);
+        } catch (Throwable $exception) {
+            report($exception);
+        }
+
+        CacheVersion::bumpMany(['dashboard', 'activities_filters', 'login_logs_filters', 'reports']);
 
         return redirect()
             ->route('admin.activities.index')
@@ -98,7 +122,7 @@ class ActivityController extends Controller
 
     public function edit(Activity $activity)
     {
-        $activity->load('user');
+        $activity->load('user:user_id,fname_user,lname_user');
 
         return view('admin.activities.edit', [
             'activity' => $activity,
@@ -126,6 +150,8 @@ class ActivityController extends Controller
             'service_type' => $data['service_type'],
             'activity_at' => $activityAt,
         ]);
+
+        CacheVersion::bumpMany(['dashboard', 'activities_filters', 'login_logs_filters', 'reports']);
 
         return redirect()
             ->route('admin.activities.edit', $activity)
