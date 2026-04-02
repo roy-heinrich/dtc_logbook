@@ -36,6 +36,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         // Handle all exceptions - log detailed info, return generic message
         $exceptions->render(function (Throwable $e) {
+            $showActualErrors = filter_var(env('SHOW_ACTUAL_ERRORS', false), FILTER_VALIDATE_BOOL);
+
             if (
                 $e instanceof \Illuminate\Validation\ValidationException ||
                 $e instanceof \Illuminate\Auth\AuthenticationException ||
@@ -64,9 +66,17 @@ return Application::configure(basePath: dirname(__DIR__))
             // Return generic message to user
             if (request()->expectsJson()) {
                 return response()->json([
-                    'message' => 'An error occurred. Please try again later.',
+                    'message' => $showActualErrors ? $e->getMessage() : 'An error occurred. Please try again later.',
                     'error' => 'internal_server_error',
                 ], 500);
+            }
+
+            if ($showActualErrors) {
+                return response()->make(
+                    '<h1>Application Error</h1><pre style="white-space:pre-wrap">' . e($e->getMessage()) . '</pre>',
+                    500,
+                    ['Content-Type' => 'text/html; charset=UTF-8']
+                );
             }
 
             return response()->view('errors.500', [], 500);
