@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\Admin;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
@@ -28,13 +31,25 @@ class AuthenticatedSessionController extends Controller
     public function store(LoginRequest $request): Response
     {
         try {
+            $email = (string) $request->input('email', '');
+            $adminRecord = Admin::query()
+                ->select(['id', 'email', 'is_active'])
+                ->where('email', $email)
+                ->first();
+
             Log::info('login.attempt.started', [
-                'email' => (string) $request->input('email', ''),
+                'email' => $email,
                 'ip' => $request->ip(),
                 'user_agent' => $request->userAgent(),
                 'cache_store' => config('cache.default'),
-                'redis_client' => config('database.redis.client'),
-                'has_redis_url' => !empty(env('REDIS_URL')),
+                'db_connection' => config('database.default'),
+                'db_host' => config('database.connections.pgsql.host'),
+                'db_port' => config('database.connections.pgsql.port'),
+                'db_database' => config('database.connections.pgsql.database'),
+                'db_server_version' => DB::selectOne('select version() as v')->v ?? null,
+                'admin_email_exists' => (bool) $adminRecord,
+                'admin_id' => $adminRecord?->id,
+                'admin_active' => $adminRecord?->is_active,
             ]);
 
             $request->authenticate();
@@ -66,6 +81,23 @@ class AuthenticatedSessionController extends Controller
                 'file' => $exception->getFile(),
                 'line' => $exception->getLine(),
             ]);
+
+            if ($exception instanceof ValidationException) {
+                $message = collect($exception->errors())
+                    ->flatten()
+                    ->first() ?? $exception->getMessage();
+
+                $email = (string) $request->input('email', '');
+                $adminExists = Admin::query()->where('email', $email)->exists();
+                if (! $adminExists) {
+                    $message .= ' (No admin account with this email was found in the current database connection.)';
+                }
+
+                return response()->view('auth.login', [
+                    'loginError' => $message,
+                    'prefillEmail' => $email,
+                ], 422);
+            }
 
             $showActualErrors = filter_var(env('SHOW_ACTUAL_ERRORS', false), FILTER_VALIDATE_BOOL);
             $message = $showActualErrors
