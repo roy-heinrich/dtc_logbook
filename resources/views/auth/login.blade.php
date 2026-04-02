@@ -1,18 +1,12 @@
 <x-guest-layout>
     <!-- Session Status -->
-    @if (!empty($loginError))
-        <div class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
-            {{ $loginError }}
-        </div>
-    @endif
-
     <form method="POST" action="{{ route('login') }}" data-loading-overlay="true" data-loading-text="Logging in...">
         @csrf
 
         <!-- Email Address -->
         <div>
             <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email', $prefillEmail ?? '')" required autofocus autocomplete="username" />
+            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
             <x-input-error :messages="$errors->get('email')" class="mt-2" />
         </div>
 
@@ -24,6 +18,10 @@
                             type="password"
                             name="password"
                             required autocomplete="current-password" />
+
+            <p id="caps-lock-warning" class="mt-2 hidden text-sm font-medium text-amber-600 dark:text-amber-400" role="status" aria-live="polite">
+                Caps Lock is on.
+            </p>
 
             <x-input-error :messages="$errors->get('password')" class="mt-2" />
         </div>
@@ -48,4 +46,41 @@
             </x-primary-button>
         </div>
     </form>
+
+    <script>
+        (() => {
+            const passwordInput = document.getElementById('password');
+            const capsLockWarning = document.getElementById('caps-lock-warning');
+
+            if (!passwordInput || !capsLockWarning) {
+                return;
+            }
+
+            let isPasswordFocused = false;
+
+            const setWarningVisible = (visible) => {
+                capsLockWarning.classList.toggle('hidden', !visible);
+            };
+
+            const updateCapsWarning = (event) => {
+                const capsOn = Boolean(event.getModifierState && event.getModifierState('CapsLock'));
+                if (isPasswordFocused) {
+                    setWarningVisible(capsOn);
+                }
+            };
+
+            passwordInput.addEventListener('keydown', updateCapsWarning);
+            passwordInput.addEventListener('keyup', updateCapsWarning);
+            passwordInput.addEventListener('focus', () => {
+                isPasswordFocused = true;
+            });
+            passwordInput.addEventListener('blur', () => {
+                isPasswordFocused = false;
+                setWarningVisible(false);
+            });
+
+            document.addEventListener('keydown', updateCapsWarning);
+            document.addEventListener('keyup', updateCapsWarning);
+        })();
+    </script>
 </x-guest-layout>

@@ -19,13 +19,13 @@ services:
       - key: APP_URL
         value: https://dtc-logbook.onrender.com
       - key: APP_DEBUG
-        value: true
+        value: false
       - key: LOG_CHANNEL
         value: stderr
       - key: LOG_LEVEL
-        value: debug
+        value: error
       - key: SHOW_ACTUAL_ERRORS
-        value: true
+        value: false
       - key: SESSION_DRIVER
         value: cookie
       - key: SESSION_COOKIE
@@ -35,13 +35,20 @@ services:
       - key: SESSION_SAME_SITE
         value: lax
       - key: CACHE_STORE
-        value: file
+        value: failover
+      - key: REDIS_CLIENT
+        value: predis
       - key: DASHBOARD_REALTIME_ENABLED
         value: false
       - key: BROADCAST_CONNECTION
         value: log
       - key: BROADCAST_DRIVER
         value: log
+      - key: REDIS_URL
+        fromService:
+          name: dtc-logbook-redis
+          type: keyvalue
+          property: connectionString
 
   - type: cron
     name: dtc-logbook-scheduler
@@ -61,10 +68,23 @@ services:
       - key: LOG_LEVEL
         value: error
       - key: CACHE_STORE
-        value: file
+        value: failover
+      - key: REDIS_CLIENT
+        value: predis
       - key: DASHBOARD_REALTIME_ENABLED
         value: false
       - key: BROADCAST_CONNECTION
         value: log
       - key: BROADCAST_DRIVER
         value: log
+      - key: REDIS_URL
+        fromService:
+          name: dtc-logbook-redis
+          type: keyvalue
+          property: connectionString
+
+  - type: keyvalue
+    name: dtc-logbook-redis
+    plan: starter
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
