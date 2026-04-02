@@ -17,9 +17,11 @@ services:
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
-        value: false
+        value: true
+      - key: LOG_CHANNEL
+        value: stderr
       - key: LOG_LEVEL
-        value: error
+        value: debug
       - key: SHOW_ACTUAL_ERRORS
         value: true
       - key: CACHE_STORE
