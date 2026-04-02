@@ -14,7 +14,14 @@ class PhpMailerService
 
         try {
             $mailer->isSMTP();
-            $mailer->SMTPDebug = app()->isProduction() ? 0 : 2; // Only enable debug in non-production
+            $smtpDebugLevel = (int) config('services.phpmailer.debug', 0);
+            $mailer->SMTPDebug = $smtpDebugLevel;
+            $mailer->Debugoutput = static function (string $message, int $level): void {
+                Log::debug('PHPMailer SMTP debug', [
+                    'level' => $level,
+                    'message' => $message,
+                ]);
+            };
             $mailer->Host = (string) config('services.phpmailer.host');
             $mailer->Port = (int) config('services.phpmailer.port');
 

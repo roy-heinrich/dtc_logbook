@@ -38,6 +38,7 @@ return [
     'phpmailer' => [
         'host' => env('PHPMAILER_HOST'),
         'port' => env('PHPMAILER_PORT', 587),
+        'debug' => (int) env('PHPMAILER_DEBUG', 0),
         'username' => env('PHPMAILER_USERNAME'),
         'password' => env('PHPMAILER_PASSWORD'),
         'encryption' => env('PHPMAILER_ENCRYPTION', 'tls'),

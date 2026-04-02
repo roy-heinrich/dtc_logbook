@@ -45,6 +45,8 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans text-gray-900 dark:text-gray-100 antialiased login-bg" style="--login-bg-image: url('{{ asset('images/login_background.webp') }}');">
+        @include('components.global-toasts')
+
         <div id="guest-page-content" class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0">
             <div>
                 <a href="/">
