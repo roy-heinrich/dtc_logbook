@@ -21,7 +21,7 @@ services:
       - key: LOG_LEVEL
         value: error
       - key: CACHE_STORE
-        value: redis
+        value: failover
       - key: REDIS_CLIENT
         value: predis
       - key: DASHBOARD_REALTIME_ENABLED
@@ -52,7 +52,7 @@ services:
       - key: LOG_LEVEL
         value: error
       - key: CACHE_STORE
-        value: redis
+        value: failover
       - key: REDIS_CLIENT
         value: predis
       - key: DASHBOARD_REALTIME_ENABLED
