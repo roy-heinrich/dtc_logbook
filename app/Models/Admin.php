@@ -83,7 +83,7 @@ class Admin extends Authenticatable
     }
 
     /**
-     * Send the password reset notification using PHPMailer.
+     * Send the password reset notification using queued job.
      */
     public function sendPasswordResetNotification($token): void
     {
