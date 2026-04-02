@@ -13,9 +13,9 @@ use App\Http\Controllers\Admin\AgreementController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
-// Redirect root to admin dashboard
+// Redirect root to login page
 Route::get('/', function () {
-    return redirect()->route('admin.dashboard');
+    return redirect()->route('login');
 });
 
 // Admin routes - protected by admin middleware

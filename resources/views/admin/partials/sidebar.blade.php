@@ -1,10 +1,11 @@
 <aside
-    x-data="{ expanded: false }"
+    x-data="{ expanded: false, logoutConfirmOpen: false }"
     @mouseenter="expanded = true"
     @mouseleave="expanded = false"
+    @keydown.escape.window="logoutConfirmOpen = false"
     class="fixed inset-y-0 left-0 border-r border-slate-300 bg-[#dde2e7] px-3 py-6 shadow-xl transition-all duration-300 ease-in-out dark:border-slate-800 dark:bg-slate-900 translate-x-0 overflow-hidden"
     style="z-index: 9999 !important; width: 5.5rem;"
-    x-init="$watch('expanded', value => { $el.style.width = value ? '16rem' : '5.5rem' })"
+    x-init="$watch('expanded', value => { $el.style.width = value ? '16rem' : '5.5rem'; if (!value) logoutConfirmOpen = false })"
 >
     <div class="text-xs font-semibold uppercase tracking-widest text-slate-400 transition-all duration-300"
          :class="expanded ? 'opacity-100' : 'opacity-0 w-0 max-w-0 overflow-hidden'" x-show="expanded" x-transition x-cloak>
@@ -112,10 +113,11 @@
         @endif
 
         @auth
-            <form method="POST" action="{{ route('logout') }}" class="mt-4">
+            <form method="POST" action="{{ route('logout') }}" class="mt-4" data-global-loading="false">
                 @csrf
                 <button
-                    type="submit"
+                    type="button"
+                    @click="logoutConfirmOpen = true"
                     class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
                     title="Logout"
                 >
@@ -127,4 +129,55 @@
             </form>
         @endauth
     </nav>
+
+    @auth
+        <div
+            x-show="logoutConfirmOpen"
+            x-cloak
+            x-transition.opacity
+            class="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/70 px-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="logout-confirm-title"
+        >
+            <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                <div class="flex items-start gap-4">
+                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-500/10 text-brand-500 dark:bg-brand-500/20">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h5a2 2 0 012 2v1"/>
+                        </svg>
+                    </div>
+
+                    <div class="min-w-0 flex-1">
+                        <h3 id="logout-confirm-title" class="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                            Leave Tech4ED Logbook?
+                        </h3>
+                        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                            Are you sure you want to log out of your admin account? You can sign back in anytime.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                    <button
+                        type="button"
+                        @click="logoutConfirmOpen = false"
+                        class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                    >
+                        Cancel
+                    </button>
+
+                    <form method="POST" action="{{ route('logout') }}" data-global-loading="false" class="inline">
+                        @csrf
+                        <button
+                            type="submit"
+                            class="inline-flex items-center justify-center rounded-xl bg-brand-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-600"
+                        >
+                            Yes, log me out
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endauth
 </aside>

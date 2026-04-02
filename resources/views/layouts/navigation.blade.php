@@ -46,7 +46,7 @@
                         </x-dropdown-link>
 
                         <!-- Authentication -->
-                        <form method="POST" action="{{ route('logout') }}" @click.stop>
+                        <form method="POST" action="{{ route('logout') }}" data-global-loading="false" onsubmit="return confirm('Are you sure you want to log out?');" @click.stop>
                             @csrf
 
                             <button type="submit" class="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 transition duration-150 ease-in-out" style="background: none; border: none; cursor: pointer;">
@@ -96,7 +96,7 @@
         </div>
 
         <div class="py-2">
-            <form method="POST" action="{{ route('logout') }}" @submit="closeMobileMenu()">
+            <form method="POST" action="{{ route('logout') }}" data-global-loading="false" onsubmit="if (!confirm('Are you sure you want to log out?')) return false; closeMobileMenu();">
                 @csrf
 
                 <button type="submit" class="block w-full px-4 py-2 text-start text-sm leading-5 text-red-400 hover:bg-slate-800 focus:outline-none focus:bg-slate-800 transition duration-150 ease-in-out font-medium" style="background: none; border: none; cursor: pointer;">
