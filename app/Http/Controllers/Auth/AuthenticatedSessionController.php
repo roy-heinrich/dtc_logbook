@@ -71,7 +71,24 @@ class AuthenticatedSessionController extends Controller
                 ? 'Login failed: ' . $exception->getMessage()
                 : 'Login failed. Please try again.';
 
-            return back()->withInput($request->only('email', 'remember'))->with('error', $message);
+            try {
+                return back()->withInput($request->only('email', 'remember'))->with('error', $message);
+            } catch (Throwable $responseException) {
+                Log::error('login.attempt.response_failed', [
+                    'email' => (string) $request->input('email', ''),
+                    'ip' => $request->ip(),
+                    'exception' => get_class($responseException),
+                    'message' => $responseException->getMessage(),
+                    'file' => $responseException->getFile(),
+                    'line' => $responseException->getLine(),
+                ]);
+
+                return response()->make(
+                    '<h1>Login Error</h1><pre style="white-space:pre-wrap">' . e($message) . '</pre>',
+                    500,
+                    ['Content-Type' => 'text/html; charset=UTF-8']
+                );
+            }
         }
     }
 
