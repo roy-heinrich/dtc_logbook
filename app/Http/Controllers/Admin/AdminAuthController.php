@@ -5,12 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\AdminRefreshToken;
-use App\Models\LoginLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
-use Throwable;
 
 class AdminAuthController extends Controller
 {
@@ -29,18 +27,6 @@ class AdminAuthController extends Controller
         if (! $admin->is_active) {
             Auth::guard('admin_api')->logout();
             return response()->json(['message' => 'Account is inactive.'], 403);
-        }
-
-        // Log the login without blocking authentication if logging fails
-        try {
-            LoginLog::create([
-                'user_id' => $admin->id,
-                'login_at' => now(),
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-            ]);
-        } catch (Throwable $exception) {
-            report($exception);
         }
 
         $refreshToken = $this->issueRefreshToken($admin);

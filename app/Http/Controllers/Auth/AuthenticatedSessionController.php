@@ -4,12 +4,10 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
-use App\Models\LoginLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
-use Throwable;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -27,19 +25,6 @@ class AuthenticatedSessionController extends Controller
     public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
-
-        // Log the login without blocking authentication if logging fails
-        try {
-            $user = Auth::user();
-            LoginLog::create([
-                'user_id' => $user->id,
-                'login_at' => now(),
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-            ]);
-        } catch (Throwable $exception) {
-            report($exception);
-        }
 
         $request->session()->regenerate();
 
