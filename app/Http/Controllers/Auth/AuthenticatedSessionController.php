@@ -33,7 +33,6 @@ class AuthenticatedSessionController extends Controller
             $user = Auth::user();
             LoginLog::create([
                 'user_id' => $user->id,
-                'user_type' => get_class($user),
                 'login_at' => now(),
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),

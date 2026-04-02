@@ -11,6 +11,7 @@ services:
     plan: free
     dockerfilePath: ./Dockerfile
     healthCheckPath: /
+    preDeployCommand: php artisan optimize:clear
     envVars:
       - fromGroup: dtc-shared-secrets
       - key: APP_ENV

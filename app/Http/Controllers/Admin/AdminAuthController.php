@@ -35,7 +35,6 @@ class AdminAuthController extends Controller
         try {
             LoginLog::create([
                 'user_id' => $admin->id,
-                'user_type' => Admin::class,
                 'login_at' => now(),
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
