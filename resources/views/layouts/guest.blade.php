@@ -6,6 +6,7 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>{{ config('app.name', 'Tech4ED Logbook|Admin') }}</title>
+        @include('partials.social-meta')
         
         <link rel="preload" as="image" href="{{ asset('images/login_background.webp') }}">
 
@@ -33,7 +34,6 @@
                     document.documentElement.classList.remove('dark');
                 } else {
                     document.documentElement.classList.add('dark');
-                        @include('partials.social-meta')
                 }
                 requestAnimationFrame(() => {
                     document.documentElement.classList.remove('theme-preload');
