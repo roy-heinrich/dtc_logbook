@@ -26,6 +26,27 @@ class SetResponseCacheHeaders
             return $response;
         }
 
+        $isAuthRoute =
+            $request->routeIs('login') ||
+            $request->routeIs('logout') ||
+            $request->routeIs('password.*') ||
+            $request->routeIs('verification.*') ||
+            $request->is('login') ||
+            $request->is('logout') ||
+            $request->is('forgot-password') ||
+            $request->is('reset-password') ||
+            $request->is('reset-password/*') ||
+            $request->is('verify-email') ||
+            $request->is('verify-email/*');
+
+        if ($isAuthRoute) {
+            $response->headers->set('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
+            $response->headers->set('Pragma', 'no-cache');
+            $response->headers->set('Expires', '0');
+
+            return $response;
+        }
+
         if ($request->routeIs('admin.*') || $request->is('admin/*') || $request->user('admin')) {
             $response->headers->set('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
             $response->headers->set('Pragma', 'no-cache');
