@@ -28,25 +28,20 @@ services:
         value: true
       - key: SESSION_DRIVER
         value: cookie
+      - key: SESSION_COOKIE
+        value: dtc-logbook-session-v2
       - key: SESSION_SECURE_COOKIE
         value: true
       - key: SESSION_SAME_SITE
         value: lax
       - key: CACHE_STORE
-        value: failover
-      - key: REDIS_CLIENT
-        value: predis
+        value: file
       - key: DASHBOARD_REALTIME_ENABLED
         value: false
       - key: BROADCAST_CONNECTION
         value: log
       - key: BROADCAST_DRIVER
         value: log
-      - key: REDIS_URL
-        fromService:
-          name: dtc-logbook-redis
-          type: keyvalue
-          property: connectionString
 
   - type: cron
     name: dtc-logbook-scheduler
@@ -66,23 +61,10 @@ services:
       - key: LOG_LEVEL
         value: error
       - key: CACHE_STORE
-        value: failover
-      - key: REDIS_CLIENT
-        value: predis
+        value: file
       - key: DASHBOARD_REALTIME_ENABLED
         value: false
       - key: BROADCAST_CONNECTION
         value: log
       - key: BROADCAST_DRIVER
         value: log
-      - key: REDIS_URL
-        fromService:
-          name: dtc-logbook-redis
-          type: keyvalue
-          property: connectionString
-
-  - type: keyvalue
-    name: dtc-logbook-redis
-    plan: starter
-    maxmemoryPolicy: allkeys-lru
-    ipAllowList: []
