@@ -89,14 +89,22 @@ class AuthenticatedSessionController extends Controller
 
                 $email = (string) $request->input('email', '');
                 $adminExists = Admin::query()->where('email', $email)->exists();
+                $adminCount = Admin::query()->count();
+                $dbHost = (string) config('database.connections.pgsql.host');
+                $dbName = (string) config('database.connections.pgsql.database');
                 if (! $adminExists) {
                     $message .= ' (No admin account with this email was found in the current database connection.)';
+                }
+
+                $showActualErrors = filter_var(env('SHOW_ACTUAL_ERRORS', false), FILTER_VALIDATE_BOOL);
+                if ($showActualErrors) {
+                    $message .= sprintf(' [db_host=%s db_name=%s admins=%d]', $dbHost, $dbName, $adminCount);
                 }
 
                 return response()->view('auth.login', [
                     'loginError' => $message,
                     'prefillEmail' => $email,
-                ], 422);
+                ], 200);
             }
 
             $showActualErrors = filter_var(env('SHOW_ACTUAL_ERRORS', false), FILTER_VALIDATE_BOOL);
