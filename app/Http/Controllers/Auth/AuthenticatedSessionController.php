@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
+use Throwable;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -27,15 +28,19 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
-        // Log the login
-        $user = Auth::user();
-        LoginLog::create([
-            'user_id' => $user->id,
-            'user_type' => get_class($user),
-            'login_at' => now(),
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-        ]);
+        // Log the login without blocking authentication if logging fails
+        try {
+            $user = Auth::user();
+            LoginLog::create([
+                'user_id' => $user->id,
+                'user_type' => get_class($user),
+                'login_at' => now(),
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+        } catch (Throwable $exception) {
+            report($exception);
+        }
 
         $request->session()->regenerate();
 
