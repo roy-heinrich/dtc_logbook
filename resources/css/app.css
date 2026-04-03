@@ -19,29 +19,16 @@
 	.shader-bg {
 		position: relative;
 		min-height: 100vh;
-		background-color: #cbd5e1;
-		background-image: var(--shader-bg-image, url('/images/background.webp'));
-		background-size: cover;
-		background-repeat: no-repeat;
-		background-position: center;
-		background-attachment: fixed;
+		background-color: #e2e8f0;
 		overflow-x: hidden;
+	}
+
+	html.dark .shader-bg {
+		background-color: #0f172a;
 	}
 	
 	.shader-bg::before {
-		content: '';
-		position: fixed;
-		top: 0;
-		left: 0;
-		width: 100vw;
-		height: 100vh;
-		background: rgba(59, 130, 246, 0.3);
-		pointer-events: none;
-		z-index: 0;
-	}
-	
-	html:not(.dark) .shader-bg::before {
-		background: rgba(248, 249, 250, 0.45);
+		content: none;
 	}
 	
 	.login-bg {
@@ -54,6 +41,10 @@
 		background-position: center;
 		background-attachment: fixed;
 		overflow-x: hidden;
+	}
+
+	html.dark .login-bg {
+		background-color: #0f172a;
 	}
 
 	.login-bg::before {

@@ -7,8 +7,6 @@
     @include('partials.social-meta')
     <title>{{ $pageTitle ?? 'Admin' }} | DTC Logbook</title>
     
-    <link rel="preload" as="image" href="{{ asset('images/background.webp') }}">
-
     <style>
         html.theme-preload *,
         html.theme-preload *::before,
@@ -43,7 +41,7 @@
     @stack('styles')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen shader-bg text-slate-700 dark:text-slate-100" style="--shader-bg-image: url('{{ asset('images/background.webp') }}');">
+<body class="min-h-screen shader-bg text-slate-700 dark:text-slate-100">
     @include('components.global-toasts')
 
     <div

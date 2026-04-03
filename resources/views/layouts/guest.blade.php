@@ -9,7 +9,7 @@
         @include('partials.social-meta')
         
         <link rel="preload" as="image" href="{{ asset('images/login_background.webp') }}">
-
+        
         <style>
             html.theme-preload *,
             html.theme-preload *::before,
@@ -176,21 +176,6 @@
                 });
             })();
 
-            if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                    navigator.serviceWorker.getRegistrations()
-                        .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
-                        .catch(() => {});
-                });
-            }
-
-            if ('caches' in window) {
-                window.addEventListener('load', () => {
-                    caches.keys()
-                        .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
-                        .catch(() => {});
-                });
-            }
         </script>
     </body>
 </html>
