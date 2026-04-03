@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\RegUser;
+use App\Services\DashboardSnapshotService;
 use App\Support\CacheVersion;
 use Illuminate\Http\Request;
+use Throwable;
 
 class RegUserController extends Controller
 {
@@ -116,6 +118,7 @@ class RegUserController extends Controller
 
         $reguser->update($data);
         CacheVersion::bumpMany(['dashboard', 'activities_filters', 'login_logs_filters', 'reports']);
+        $this->refreshDashboardSnapshot();
 
         return redirect()
             ->route('admin.regusers.edit', $reguser)
@@ -126,6 +129,7 @@ class RegUserController extends Controller
     {
         $reguser->delete();
         CacheVersion::bumpMany(['dashboard', 'activities_filters', 'login_logs_filters', 'reports']);
+        $this->refreshDashboardSnapshot();
 
         return redirect()
             ->route('admin.regusers.index')
@@ -137,6 +141,7 @@ class RegUserController extends Controller
         $user = RegUser::onlyTrashed()->findOrFail($reguserId);
         $user->restore();
         CacheVersion::bumpMany(['dashboard', 'activities_filters', 'login_logs_filters', 'reports']);
+        $this->refreshDashboardSnapshot();
 
         return redirect()
             ->route('admin.regusers.trash')
@@ -148,6 +153,7 @@ class RegUserController extends Controller
         $user = RegUser::onlyTrashed()->findOrFail($reguserId);
         $user->forceDelete();
         CacheVersion::bumpMany(['dashboard', 'activities_filters', 'login_logs_filters', 'reports']);
+        $this->refreshDashboardSnapshot();
 
         return redirect()
             ->route('admin.regusers.trash')
@@ -185,5 +191,14 @@ class RegUserController extends Controller
             ->when($sector !== '' && $sector !== 'all', function ($query) use ($sector) {
                 $query->where('sector_user', $sector);
             });
+    }
+
+    private function refreshDashboardSnapshot(): void
+    {
+        try {
+            app(DashboardSnapshotService::class)->refresh();
+        } catch (Throwable $exception) {
+            report($exception);
+        }
     }
 }

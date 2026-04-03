@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Activity;
+use App\Models\DashboardSnapshot;
 use App\Models\RegUser;
+use App\Services\DashboardSnapshotService;
 use App\Support\CacheVersion;
 use App\Support\RealtimeToken;
 use Illuminate\Http\Request;
@@ -31,18 +33,29 @@ class DashboardController extends Controller
         $todayStart = Carbon::today()->startOfDay();
         $todayEnd = Carbon::today()->endOfDay();
 
-        $availableYears = Cache::remember(
-            CacheVersion::key('dashboard', 'available_years'),
-            3600,
-            fn () => Activity::query()
-                ->whereNotNull('activity_at')
-                ->selectRaw('EXTRACT(YEAR FROM activity_at) as year')
-                ->distinct()
-                ->orderByDesc('year')
-                ->pluck('year')
-                ->filter()
-                ->values()
-        );
+        $snapshot = DashboardSnapshot::query()
+            ->where('snapshot_key', 'dashboard:default')
+            ->first();
+
+        $snapshotMaxAgeSeconds = max(10, (int) env('DASHBOARD_SNAPSHOT_MAX_AGE_SECONDS', 120));
+        $isSnapshotFresh = $snapshot !== null
+            && $snapshot->refreshed_at !== null
+            && $snapshot->refreshed_at->greaterThan(now()->subSeconds($snapshotMaxAgeSeconds));
+
+        $availableYears = $isSnapshotFresh
+            ? collect(data_get($snapshot->payload, 'available_years', []))
+            : Cache::remember(
+                CacheVersion::key('dashboard', 'available_years'),
+                3600,
+                fn () => Activity::query()
+                    ->whereNotNull('activity_at')
+                    ->selectRaw('EXTRACT(YEAR FROM activity_at) as year')
+                    ->distinct()
+                    ->orderByDesc('year')
+                    ->pluck('year')
+                    ->filter()
+                    ->values()
+            );
 
         $months = collect(range(1, 12))->mapWithKeys(
             fn ($month) => [$month => Carbon::create()->month($month)->format('F')]
@@ -57,6 +70,59 @@ class DashboardController extends Controller
         $serviceMonth = $this->sanitizeMonth($request->query('service_month'));
         $trainingYear = $this->sanitizeYear($request->query('training_year'), $availableYears, $defaultYear);
         $trainingMonth = $this->sanitizeMonth($request->query('training_month'));
+
+        $usingDefaultFilters =
+            $request->query('facility_year') === null &&
+            $request->query('facility_month') === null &&
+            $request->query('service_year') === null &&
+            $request->query('service_month') === null &&
+            $request->query('training_year') === null &&
+            $request->query('training_month') === null;
+
+        if ($usingDefaultFilters) {
+            if ($snapshot) {
+                if (!$isSnapshotFresh) {
+                    dispatch(function (): void {
+                        try {
+                            app(DashboardSnapshotService::class)->refresh();
+                        } catch (Throwable $exception) {
+                            report($exception);
+                        }
+                    })->afterResponse();
+                }
+
+                $liveLatestActivity = Activity::with(['user:user_id,fname_user,lname_user'])
+                    ->latest('activity_id')
+                    ->first();
+
+                $liveTotalActivities = Activity::count();
+                $liveTodayActivities = Activity::whereBetween('activity_at', [$todayStart, $todayEnd])->count();
+
+                $snapshotPayload = $snapshot->payload;
+                $snapshotPayload['latest_activity'] = $this->serializeLatestActivity($liveLatestActivity);
+                $snapshotPayload['total_activities'] = $liveTotalActivities;
+                $snapshotPayload['today_activities'] = $liveTodayActivities;
+
+                $response = view('admin.dashboard', $this->buildDashboardViewDataFromSnapshot(
+                    $snapshotPayload,
+                    $facilityYear,
+                    $facilityMonth,
+                    $serviceYear,
+                    $serviceMonth,
+                    $trainingYear,
+                    $trainingMonth,
+                    $availableYears,
+                    $months
+                ));
+
+                Log::info('dashboard.index.completed', [
+                    'admin_id' => auth('admin')->id(),
+                    'mode' => $isSnapshotFresh ? 'precomputed' : 'precomputed_stale_refreshing',
+                ]);
+
+                return $response;
+            }
+        }
 
         $totalUsers = Cache::remember(CacheVersion::key('dashboard', 'total_users'), 900, fn () => RegUser::count());
         $totalActivities = Cache::remember(CacheVersion::key('dashboard', 'total_activities'), 900, fn () => Activity::count());
@@ -93,7 +159,7 @@ class DashboardController extends Controller
         $latestActivity = Cache::remember(
             CacheVersion::key('dashboard', 'latest_activity'),
             300,
-            fn () => Activity::with(['user:user_id,fname_user,lname_user'])->latest('activity_at')->first()
+            fn () => Activity::with(['user:user_id,fname_user,lname_user'])->latest('activity_id')->first()
         );
 
         // Activity chart for last 7 days
@@ -333,12 +399,13 @@ class DashboardController extends Controller
         $currentPercent = 0;
 
         foreach ($items as $index => $item) {
-            $percent = ($item->total / $total) * 100;
+            $totalValue = (float) data_get($item, 'total', 0);
+            $percent = $totalValue > 0 ? ($totalValue / $total) * 100 : 0;
             $color = $colors[$index % count($colors)];
             
             $slices[] = [
                 'label' => data_get($item, $field),
-                'value' => $item->total,
+                'value' => $totalValue,
                 'percent' => $percent,
                 'color' => $color,
             ];
@@ -353,6 +420,111 @@ class DashboardController extends Controller
         return [
             'slices' => $slices,
             'gradient' => $gradient,
+        ];
+    }
+
+    private function buildDashboardViewDataFromSnapshot(array $payload, ?int $facilityYear, ?int $facilityMonth, ?int $serviceYear, ?int $serviceMonth, ?int $trainingYear, ?int $trainingMonth, $availableYears, $months): array
+    {
+        $latestActivity = $this->hydrateLatestActivity(data_get($payload, 'latest_activity'));
+
+        $trainingModes = collect(data_get($payload, 'training_modes', []));
+        $topFacilities = collect(data_get($payload, 'top_facilities', []));
+        $topServices = collect(data_get($payload, 'top_services', []));
+        $mostActiveUsers = collect(data_get($payload, 'most_active_users', []));
+        $genderStats = collect(data_get($payload, 'gender_stats', []));
+
+        $trainingModeChartData = $this->preparePieChartData($trainingModes, [
+            '#10b981',
+            '#f59e0b',
+            '#06b6d4',
+            '#8b5cf6',
+            '#ec4899',
+            '#14b8a6',
+        ], 'md_training');
+
+        $facilityChartData = $this->preparePieChartData($topFacilities, [
+            '#2563eb',
+            '#dc2626',
+            '#16a34a',
+            '#d97706',
+            '#7c3aed',
+            '#0891b2',
+        ], 'facility_used');
+
+        $serviceChartData = $this->preparePieChartData($topServices, [
+            '#9333ea',
+            '#ea580c',
+            '#0f766e',
+            '#1d4ed8',
+            '#be123c',
+            '#65a30d',
+        ], 'service_type');
+
+        $genderChartData = $this->preparePieChartData($genderStats, [
+            '#3b82f6',
+            '#ec4899',
+        ], 'sex_user');
+
+        $adminId = (int) (auth('admin')->id() ?? 0);
+        $realtimeEnabled = filter_var(env('DASHBOARD_REALTIME_ENABLED', false), FILTER_VALIDATE_BOOL);
+        $websocketPublicUrl = trim((string) env('WEBSOCKET_PUBLIC_URL', ''));
+        $realtimeToken = ($realtimeEnabled && $websocketPublicUrl !== '' && $adminId > 0)
+            ? RealtimeToken::issue($adminId, 'dashboard', (int) env('WEBSOCKET_TOKEN_TTL', 60))
+            : null;
+
+        return [
+            'totalUsers' => (int) data_get($payload, 'total_users', 0),
+            'totalActivities' => (int) data_get($payload, 'total_activities', 0),
+            'todayActivities' => (int) data_get($payload, 'today_activities', 0),
+            'latestActivity' => $latestActivity,
+            'activityChart' => collect(data_get($payload, 'activity_chart', [])),
+            'topFacilities' => $topFacilities,
+            'topServices' => $topServices,
+            'trainingModes' => $trainingModes,
+            'facilityChartData' => $facilityChartData,
+            'serviceChartData' => $serviceChartData,
+            'trainingModeChartData' => $trainingModeChartData,
+            'mostActiveUsers' => $mostActiveUsers,
+            'genderStats' => $genderStats,
+            'genderChartData' => $genderChartData,
+            'availableYears' => collect(data_get($payload, 'available_years', [])),
+            'months' => $months,
+            'realtimeToken' => $realtimeToken,
+            'facilityFilter' => ['year' => $facilityYear, 'month' => $facilityMonth],
+            'serviceFilter' => ['year' => $serviceYear, 'month' => $serviceMonth],
+            'trainingFilter' => ['year' => $trainingYear, 'month' => $trainingMonth],
+        ];
+    }
+
+    private function hydrateLatestActivity(?array $payload): ?object
+    {
+        if ($payload === null) {
+            return null;
+        }
+
+        $latestActivity = (object) [
+            'activity_id' => $payload['activity_id'] ?? null,
+            'activity_at' => !empty($payload['activity_at']) ? Carbon::parse($payload['activity_at']) : null,
+        ];
+
+        $latestActivity->user = !empty($payload['user']) ? (object) $payload['user'] : null;
+
+        return $latestActivity;
+    }
+
+    private function serializeLatestActivity(?Activity $activity): ?array
+    {
+        if (!$activity) {
+            return null;
+        }
+
+        return [
+            'activity_id' => $activity->activity_id,
+            'activity_at' => $activity->activity_at?->toIso8601String(),
+            'user' => $activity->user ? [
+                'fname_user' => $activity->user->fname_user,
+                'lname_user' => $activity->user->lname_user,
+            ] : null,
         ];
     }
 }

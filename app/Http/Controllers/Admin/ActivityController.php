@@ -6,6 +6,7 @@ use App\Events\ActivityAdded;
 use App\Http\Controllers\Controller;
 use App\Models\Activity;
 use App\Models\RegUser;
+use App\Services\DashboardSnapshotService;
 use App\Support\CacheVersion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -90,7 +91,7 @@ class ActivityController extends Controller
         ]);
 
         // Combine date and time into activity_at
-        $activityAt = null;
+        $activityAt = now();
         if (!empty($data['activity_date'])) {
             $time = $data['activity_time'] ?? '00:00';
             $activityAt = $data['activity_date'] . ' ' . $time;
@@ -114,6 +115,12 @@ class ActivityController extends Controller
         }
 
         CacheVersion::bumpMany(['dashboard', 'activities_filters', 'login_logs_filters', 'reports']);
+
+        try {
+            app(DashboardSnapshotService::class)->refresh();
+        } catch (Throwable $exception) {
+            report($exception);
+        }
 
         return redirect()
             ->route('admin.activities.index')
@@ -139,7 +146,7 @@ class ActivityController extends Controller
         ]);
 
         // Combine date and time into activity_at
-        $activityAt = null;
+        $activityAt = $activity->activity_at ?? now();
         if (!empty($data['activity_date'])) {
             $time = $data['activity_time'] ?? '00:00';
             $activityAt = $data['activity_date'] . ' ' . $time;
@@ -152,6 +159,12 @@ class ActivityController extends Controller
         ]);
 
         CacheVersion::bumpMany(['dashboard', 'activities_filters', 'login_logs_filters', 'reports']);
+
+        try {
+            app(DashboardSnapshotService::class)->refresh();
+        } catch (Throwable $exception) {
+            report($exception);
+        }
 
         return redirect()
             ->route('admin.activities.edit', $activity)

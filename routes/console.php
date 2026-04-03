@@ -11,3 +11,4 @@ Artisan::command('inspire', function () {
 Schedule::command('app:purge-soft-deletes')->daily();
 Schedule::command('cache:prune')->hourly();
 Schedule::command('cache:clear')->dailyAt('03:00');
+Schedule::command('app:build-dashboard-snapshot')->everyFiveMinutes()->withoutOverlapping();
