@@ -56,7 +56,7 @@
         >
             <div class="w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-slate-200 bg-white p-5 text-center shadow-2xl dark:border-slate-700 dark:bg-slate-900">
                 <div class="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-brand-500 border-t-transparent"></div>
-                <p id="global-submit-loading-title" class="mt-4 text-base font-semibold text-slate-900 dark:text-slate-100">Saving changes...</p>
+                <p id="global-submit-loading-title" class="mt-4 text-base font-semibold text-slate-900 dark:text-slate-100">Processing your Request...</p>
                 <p class="mt-1 text-xs text-slate-700 dark:text-slate-300">Please wait while we process your request.</p>
             </div>
         </div>

@@ -166,7 +166,7 @@
                     Clear Filters
                 </a>
                 <div class="flex flex-wrap gap-3">
-                    <form id="exportExcelForm" method="POST" action="{{ route('admin.export.excel') }}" style="display: inline;">
+                    <form id="exportExcelForm" method="POST" action="{{ route('admin.export.excel') }}" style="display: inline;" data-global-loading="false">
                         @csrf
                         <input type="hidden" name="start_date" id="excelStartDate">
                         <input type="hidden" name="end_date" id="excelEndDate">
@@ -175,7 +175,7 @@
                             Export Excel
                         </button>
                     </form>
-                    <form id="exportCsvForm" method="POST" action="{{ route('admin.export.csv') }}" style="display: inline;">
+                    <form id="exportCsvForm" method="POST" action="{{ route('admin.export.csv') }}" style="display: inline;" data-global-loading="false">
                         @csrf
                         <input type="hidden" name="start_date" id="csvStartDate">
                         <input type="hidden" name="end_date" id="csvEndDate">

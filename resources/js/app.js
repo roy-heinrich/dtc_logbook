@@ -317,7 +317,7 @@ const initGlobalSubmitLoading = () => {
 		}
 
 		submittedForm.dataset.submitting = 'true';
-		loadingTitle.textContent = submittedForm.dataset.loadingText || 'Saving changes...';
+		loadingTitle.textContent = 'Processing your Request...';
 		loadingOverlay.classList.remove('hidden');
 		loadingOverlay.classList.add('flex');
 		loadingOverlay.setAttribute('aria-hidden', 'false');
