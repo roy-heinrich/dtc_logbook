@@ -56,10 +56,6 @@ class ExportController extends Controller
 
         $templatePath = base_path('DTC Attendance.xlsx');
 
-        if (!file_exists($templatePath)) {
-            abort(404, 'DTC Attendance template file not found.');
-        }
-
         $payloadPath = tempnam(sys_get_temp_dir(), 'dtc-attendance-payload-');
         if ($payloadPath === false) {
             throw new RuntimeException('Unable to create temporary payload file for Excel export.');
@@ -187,14 +183,17 @@ class ExportController extends Controller
             throw new RuntimeException('Unable to write payload for Excel export.');
         }
 
-        $process = $this->runAttendanceGenerator($templatePath, $outputPath, $jsonPayloadPath);
+        $process = null;
+        if (file_exists($templatePath)) {
+            $process = $this->runAttendanceGenerator($templatePath, $outputPath, $jsonPayloadPath);
+        }
         @unlink($jsonPayloadPath);
 
-        if (!$process->isSuccessful()) {
+        if (!$process || !$process->isSuccessful() || !file_exists($outputPath)) {
             logger()->error('Excel export generator failed', [
-                'error_output' => $process->getErrorOutput(),
-                'output' => $process->getOutput(),
-                'exit_code' => $process->getExitCode(),
+                'error_output' => $process?->getErrorOutput(),
+                'output' => $process?->getOutput(),
+                'exit_code' => $process?->getExitCode(),
                 'request_filters' => [
                     'start_date' => $request->input('start_date'),
                     'end_date' => $request->input('end_date'),
@@ -202,7 +201,7 @@ class ExportController extends Controller
                 ],
             ]);
 
-            throw new RuntimeException('Failed to generate attendance export. Please check server logs.');
+            $this->generateAttendanceWorkbook($outputPath, $dateLabel, $venueLabel, $servicesHeader, $attendees);
         }
 
         return response()->download($outputPath, 'DTC Attendance.xlsx')->deleteFileAfterSend(true);
@@ -268,6 +267,191 @@ class ExportController extends Controller
         }
 
         return ['python', 'py', 'python3'];
+    }
+
+    private function generateAttendanceWorkbook(
+        string $outputPath,
+        string $dateLabel,
+        string $venueLabel,
+        string $servicesHeader,
+        array $attendees
+    ): void {
+        if (!class_exists(\ZipArchive::class)) {
+            throw new RuntimeException('ZipArchive is required to generate the Excel export fallback.');
+        }
+
+        $zip = new \ZipArchive();
+        if ($zip->open($outputPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            throw new RuntimeException('Unable to create the Excel export file.');
+        }
+
+        $rows = [];
+        $rows[] = [
+            ['type' => 'string', 'value' => 'Venue: ' . $venueLabel],
+        ];
+        $rows[] = [
+            ['type' => 'string', 'value' => 'Date: ' . $dateLabel],
+        ];
+        $rows[] = [
+            ['type' => 'string', 'value' => 'ATTENDANCE SHEET'],
+        ];
+        $rows[] = [];
+        $rows[] = [
+            ['type' => 'string', 'value' => 'Name'],
+            ['type' => 'string', 'value' => 'Sex'],
+            ['type' => 'string', 'value' => 'Age'],
+            ['type' => 'string', 'value' => 'Services Availed'],
+            ['type' => 'string', 'value' => 'Contact Information'],
+            ['type' => 'string', 'value' => 'Sector'],
+            ['type' => 'string', 'value' => 'Terms'],
+        ];
+
+        foreach ($attendees as $attendee) {
+            $rows[] = [
+                ['type' => 'string', 'value' => (string) ($attendee['name'] ?? '')],
+                ['type' => 'string', 'value' => (string) ($attendee['sex'] ?? '')],
+                ['type' => 'number', 'value' => (string) ($attendee['age'] ?? '')],
+                ['type' => 'string', 'value' => (string) ($attendee['service'] ?? '')],
+                ['type' => 'string', 'value' => trim((string) (($attendee['email'] ?? '') . ' | ' . ($attendee['number'] ?? '')))],
+                ['type' => 'string', 'value' => (string) ($attendee['sector'] ?? '')],
+                ['type' => 'string', 'value' => (string) ($attendee['terms_user'] ?? '')],
+            ];
+        }
+
+        $zip->addFromString('[Content_Types].xml', $this->buildXlsxContentTypesXml());
+        $zip->addFromString('_rels/.rels', $this->buildXlsxRootRelsXml());
+        $zip->addFromString('docProps/app.xml', $this->buildXlsxAppXml());
+        $zip->addFromString('docProps/core.xml', $this->buildXlsxCoreXml());
+        $zip->addFromString('xl/workbook.xml', $this->buildXlsxWorkbookXml());
+        $zip->addFromString('xl/_rels/workbook.xml.rels', $this->buildXlsxWorkbookRelsXml());
+        $zip->addFromString('xl/styles.xml', $this->buildXlsxStylesXml());
+        $zip->addFromString('xl/worksheets/sheet1.xml', $this->buildXlsxSheetXml($rows));
+
+        $zip->close();
+    }
+
+    private function buildXlsxContentTypesXml(): string
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            . '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            . '<Default Extension="xml" ContentType="application/xml"/>'
+            . '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+            . '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+            . '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+            . '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>'
+            . '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>'
+            . '</Types>';
+    }
+
+    private function buildXlsxRootRelsXml(): string
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+            . '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>'
+            . '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>'
+            . '</Relationships>';
+    }
+
+    private function buildXlsxWorkbookXml(): string
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            . '<sheets><sheet name="Attendance" sheetId="1" r:id="rId1"/></sheets>'
+            . '</workbook>';
+    }
+
+    private function buildXlsxWorkbookRelsXml(): string
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+            . '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+            . '</Relationships>';
+    }
+
+    private function buildXlsxStylesXml(): string
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            . '<fonts count="1"><font><sz val="11"/><color theme="1"/><name val="Calibri"/><family val="2"/></font></fonts>'
+            . '<fills count="1"><fill><patternFill patternType="none"/></fill></fills>'
+            . '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'
+            . '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+            . '<cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>'
+            . '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
+            . '</styleSheet>';
+    }
+
+    private function buildXlsxAppXml(): string
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">'
+            . '<Application>Microsoft Excel</Application>'
+            . '</Properties>';
+    }
+
+    private function buildXlsxCoreXml(): string
+    {
+        $timestamp = now()->toAtomString();
+
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'
+            . '<dc:creator>DTC Logbook</dc:creator>'
+            . '<cp:lastModifiedBy>DTC Logbook</cp:lastModifiedBy>'
+            . '<dcterms:created xsi:type="dcterms:W3CDTF">' . $timestamp . '</dcterms:created>'
+            . '<dcterms:modified xsi:type="dcterms:W3CDTF">' . $timestamp . '</dcterms:modified>'
+            . '</cp:coreProperties>';
+    }
+
+    private function buildXlsxSheetXml(array $rows): string
+    {
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+        $xml .= '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">';
+        $xml .= '<sheetData>';
+
+        foreach ($rows as $rowIndex => $rowCells) {
+            $rowNumber = $rowIndex + 1;
+            $xml .= '<row r="' . $rowNumber . '">';
+
+            foreach ($rowCells as $cellIndex => $cell) {
+                $column = $this->xlsxColumnName($cellIndex + 1);
+                $reference = $column . $rowNumber;
+                $value = (string) ($cell['value'] ?? '');
+
+                if (($cell['type'] ?? 'string') === 'number' && $value !== '' && is_numeric($value)) {
+                    $xml .= '<c r="' . $reference . '"><v>' . $this->escapeXml($value) . '</v></c>';
+                    continue;
+                }
+
+                $xml .= '<c r="' . $reference . '" t="inlineStr"><is><t>' . $this->escapeXml($value) . '</t></is></c>';
+            }
+
+            $xml .= '</row>';
+        }
+
+        $xml .= '</sheetData></worksheet>';
+
+        return $xml;
+    }
+
+    private function xlsxColumnName(int $index): string
+    {
+        $name = '';
+
+        while ($index > 0) {
+            $index--;
+            $name = chr(65 + ($index % 26)) . $name;
+            $index = intdiv($index, 26);
+        }
+
+        return $name;
+    }
+
+    private function escapeXml(string $value): string
+    {
+        return htmlspecialchars($value, ENT_XML1 | ENT_QUOTES, 'UTF-8');
     }
 
     public function exportPdf(Request $request)
