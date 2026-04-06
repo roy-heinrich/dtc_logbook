@@ -1,15 +1,17 @@
-<div class="rounded-2xl glass-card shadow-sm">
+<div class="rounded-2xl glass-card shadow-sm overflow-hidden">
     <!-- Mobile/Tablet View - Card Layout -->
     <div class="md:hidden space-y-3 p-4">
         @forelse ($users as $user)
+            @php($displaySuffix = filled($user->suffix_user) && !preg_match('/^N\s*\/?\s*A?$/i', trim($user->suffix_user)) ? trim($user->suffix_user) : null)
+            @php($nameExtras = trim(implode(' ', array_filter([$user->mname_user, $displaySuffix]))))
             <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800">
                 <div class="space-y-2">
                     <div class="flex justify-between items-start gap-2">
                         <span class="font-semibold text-slate-600 dark:text-slate-300 text-sm">Name</span>
                         <div class="text-right">
                             <div class="font-medium text-slate-900 dark:text-white">{{ $user->lname_user }}, {{ $user->fname_user }}</div>
-                            @if($user->mname_user || $user->suffix_user)
-                                <span class="text-xs text-slate-500">{{ $user->mname_user }} {{ $user->suffix_user }}</span>
+                            @if($nameExtras !== '')
+                                <span class="text-xs text-slate-500">{{ $nameExtras }}</span>
                             @endif
                         </div>
                     </div>
@@ -64,11 +66,12 @@
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                 @forelse ($users as $user)
+                    @php($displaySuffix = filled($user->suffix_user) && !preg_match('/^N\s*\/?\s*A?$/i', trim($user->suffix_user)) ? trim($user->suffix_user) : null)
                     <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-950">
                         <td class="px-4 py-4 font-semibold text-slate-900 dark:text-white {{ $loop->last ? 'rounded-bl-xl' : '' }}">{{ $user->lname_user }}</td>
                         <td class="px-4 py-4 text-slate-600 dark:text-slate-300">{{ $user->fname_user }}</td>
                         <td class="px-4 py-4 text-slate-600 dark:text-slate-300">{{ $user->mname_user }}</td>
-                        <td class="px-4 py-4 text-slate-600 dark:text-slate-300">{{ $user->suffix_user }}</td>
+                        <td class="px-4 py-4 text-slate-600 dark:text-slate-300">{{ $displaySuffix }}</td>
                         <td class="px-4 py-4 text-slate-600 dark:text-slate-300">{{ $user->birthdate?->format('Y-m-d') }}</td>
                         <td class="px-4 py-4 text-slate-600 dark:text-slate-300">{{ $user->sex_user }}</td>
                         <td class="px-4 py-4 text-slate-600 dark:text-slate-300">{{ $user->sector_user }}</td>

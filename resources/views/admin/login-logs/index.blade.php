@@ -55,7 +55,7 @@
         </form>
     </div>
 
-    <div class="mt-6 rounded-2xl glass-card shadow-sm">
+    <div class="mt-6 rounded-2xl glass-card shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
             <table class="min-w-[640px] w-full text-left text-sm">
             <thead class="bg-slate-50 text-xs uppercase tracking-widest text-slate-400 dark:bg-slate-950">
