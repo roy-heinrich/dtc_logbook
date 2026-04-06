@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import sys
 from copy import copy
 
@@ -11,6 +12,10 @@ if os.path.isdir(LOCAL_PYTHON_PACKAGES) and LOCAL_PYTHON_PACKAGES not in sys.pat
 
 from openpyxl import load_workbook
 from openpyxl.drawing.image import Image
+from openpyxl.styles import Font
+
+
+DEFAULT_FONT = Font(name="Calibri", size=11)
 
 
 def normalize_text(value):
@@ -21,6 +26,11 @@ def normalize_text(value):
 
 def format_sex(sex_value):
     return normalize_text(sex_value)
+
+
+def sanitize_name(name_value):
+    name = normalize_text(name_value)
+    return re.sub(r"\s+(n/a|n/|na|n|-|none|null)\s*$", "", name, flags=re.IGNORECASE).strip()
 
 
 def format_contact(email, number):
@@ -100,6 +110,9 @@ def main():
     sheet["G5"] = "Sector"
     sheet["H5"] = "Terms"
 
+    for header_cell in ("A5", "C5", "D5", "E5", "F5", "G5", "H5"):
+        sheet[header_cell].font = DEFAULT_FONT
+
     data_start_row = 6
     footer_start_row = 19
     template_row_for_style = 6
@@ -120,7 +133,7 @@ def main():
         for column in ("A", "B", "C", "D", "E", "F", "G", "H"):
             sheet[f"{column}{row}"] = ""
 
-        name = normalize_text(attendee.get("name"))
+        name = sanitize_name(attendee.get("name"))
         age_value = attendee.get("age")
         age = "" if age_value in (None, "") else str(age_value)
         service = normalize_text(attendee.get("service"))
@@ -145,6 +158,9 @@ def main():
         sheet[f"F{row}"] = contact_value
         sheet[f"G{row}"] = sector_value
         sheet[f"H{row}"] = terms_user
+
+        for column in ("A", "B", "C", "D", "E", "F", "G", "H"):
+            sheet[f"{column}{row}"].font = DEFAULT_FONT
 
     workbook.save(output_path)
 
