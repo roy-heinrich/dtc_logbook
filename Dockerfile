@@ -25,7 +25,7 @@ RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 RUN docker-php-ext-install pdo_pgsql pgsql mbstring exif pcntl bcmath gd zip
 
 # Install Python packages used by the Excel export generator
-RUN python3 -m pip install --no-cache-dir openpyxl pillow
+RUN python3 -m pip install --no-cache-dir --break-system-packages openpyxl pillow
 
 # Get latest Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
