@@ -45,7 +45,7 @@
                                 Restore
                             </button>
                         </form>
-                        <form action="{{ route('admin.roles.force-delete', $role->id) }}" method="POST" class="inline" onsubmit="return confirm('Delete this role permanently?');">
+                        <form action="{{ route('admin.roles.force-delete', $role->id) }}" method="POST" class="inline" data-confirm-title="Delete Role Permanently?" data-confirm-message="This will permanently delete the role and cannot be undone." data-confirm-submit="Delete Permanently" data-confirm-type="permanent-delete">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">

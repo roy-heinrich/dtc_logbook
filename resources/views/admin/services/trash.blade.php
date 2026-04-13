@@ -47,7 +47,7 @@
                                             Restore
                                         </button>
                                     </form>
-                                    <form action="{{ route('admin.services.force-delete', $service->service_id) }}" method="POST" class="inline" onsubmit="return confirm('Delete this service permanently?');">
+                                    <form action="{{ route('admin.services.force-delete', $service->service_id) }}" method="POST" class="inline" data-confirm-title="Delete Service Permanently?" data-confirm-message="This will permanently delete the service and cannot be undone." data-confirm-submit="Delete Permanently" data-confirm-type="permanent-delete">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">

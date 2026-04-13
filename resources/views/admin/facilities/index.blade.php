@@ -9,9 +9,11 @@
     <div class="flex items-center justify-between">
         <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Facilities</h1>
         <div class="flex items-center gap-2">
-            <a href="{{ route('admin.facilities.trash') }}" title="View Trash" class="inline-flex items-center justify-center p-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+            <a href="{{ route('admin.facilities.trash') }}" title="View Restore Items" class="inline-flex items-center justify-center p-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 2" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.05 11a9 9 0 0115.5-4.5L21 9m0-6v6h-6" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.95 13a9 9 0 01-15.5 4.5L3 15m0 6v-6h6" />
                 </svg>
             </a>
             <a href="#add-facility" onclick="document.getElementById('add-facility-form').scrollIntoView({ behavior: 'smooth' }); document.querySelector('#add-facility-form input').focus(); return false;" class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-600">
@@ -76,7 +78,7 @@
                                     <a href="{{ route('admin.facilities.edit', $facility) }}" class="text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300">
                                         Edit
                                     </a>
-                                    <form action="{{ route('admin.facilities.destroy', $facility) }}" method="POST" class="inline" onsubmit="return confirm('Delete this facility?');">
+                                    <form action="{{ route('admin.facilities.destroy', $facility) }}" method="POST" class="inline" data-confirm-title="Delete Facility?" data-confirm-message="This facility will be moved to trash and can be restored later." data-confirm-submit="Move to Trash">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">

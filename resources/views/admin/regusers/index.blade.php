@@ -8,9 +8,11 @@
             <div class="text-sm text-slate-500 dark:text-slate-400">Manage registered users</div>
             <div class="text-2xl font-semibold text-slate-900 dark:text-white">User Directory</div>
         </div>
-        <a href="{{ route('admin.regusers.trash') }}" title="View Trash" class="self-start inline-flex items-center justify-center p-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition lg:self-auto">
+        <a href="{{ route('admin.regusers.trash') }}" title="View Restore Items" class="self-start inline-flex items-center justify-center p-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition lg:self-auto">
             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 2" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.05 11a9 9 0 0115.5-4.5L21 9m0-6v6h-6" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.95 13a9 9 0 01-15.5 4.5L3 15m0 6v-6h6" />
             </svg>
         </a>
         <form method="GET" class="flex w-full flex-col gap-2 lg:w-auto lg:flex-row lg:items-center">

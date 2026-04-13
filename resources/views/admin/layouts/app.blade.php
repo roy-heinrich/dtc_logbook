@@ -70,6 +70,45 @@
         </div>
     </div>
 
+    <div
+        id="global-action-confirm-modal"
+        class="fixed inset-0 z-[10000] hidden items-center justify-center bg-slate-950/70 px-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="global-action-confirm-title"
+    >
+        <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+            <div class="flex items-start gap-4">
+                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-rose-500/10 text-rose-500 dark:bg-rose-500/20">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M7.938 4h8.124c1.54 0 2.502 1.667 1.732 3L13.732 14a2 2 0 01-3.464 0L6.206 7c-.77-1.333.192-3 1.732-3z"/>
+                    </svg>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <h3 id="global-action-confirm-title" class="text-lg font-semibold text-slate-900 dark:text-slate-100">Confirm Action</h3>
+                    <p id="global-action-confirm-message" class="mt-2 text-sm text-slate-600 dark:text-slate-300">Are you sure you want to continue?</p>
+                </div>
+            </div>
+
+            <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                    type="button"
+                    data-confirm-cancel
+                    class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                    Cancel
+                </button>
+                <button
+                    type="button"
+                    data-confirm-submit
+                    class="inline-flex items-center justify-center rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700"
+                >
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+
     @stack('scripts')
     
     <script>
@@ -89,6 +128,107 @@
                 navigator.serviceWorker.register('/sw.js').catch(() => {});
             });
         }
+
+        (() => {
+            const modal = document.getElementById('global-action-confirm-modal');
+            if (!modal) {
+                return;
+            }
+
+            const titleElement = document.getElementById('global-action-confirm-title');
+            const messageElement = document.getElementById('global-action-confirm-message');
+            const submitButton = modal.querySelector('[data-confirm-submit]');
+            const cancelButtons = modal.querySelectorAll('[data-confirm-cancel]');
+            let pendingForm = null;
+
+            const openModal = ({ title, message, submitText, isDanger }) => {
+                titleElement.textContent = title;
+                messageElement.textContent = message;
+                submitButton.textContent = submitText;
+                submitButton.classList.toggle('bg-rose-600', isDanger);
+                submitButton.classList.toggle('hover:bg-rose-700', isDanger);
+                submitButton.classList.toggle('bg-brand-500', !isDanger);
+                submitButton.classList.toggle('hover:bg-brand-600', !isDanger);
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                document.body.classList.add('overflow-hidden');
+                requestAnimationFrame(() => cancelButtons[0]?.focus());
+            };
+
+            const closeModal = () => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                document.body.classList.remove('overflow-hidden');
+                pendingForm = null;
+            };
+
+            cancelButtons.forEach((button) => {
+                button.addEventListener('click', closeModal);
+            });
+
+            modal.addEventListener('click', (event) => {
+                if (event.target === modal) {
+                    closeModal();
+                }
+            });
+
+            window.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
+                    closeModal();
+                }
+            });
+
+            submitButton.addEventListener('click', () => {
+                if (!pendingForm) {
+                    closeModal();
+                    return;
+                }
+
+                const formToSubmit = pendingForm;
+                closeModal();
+                formToSubmit.submit();
+            });
+
+            document.addEventListener('submit', (event) => {
+                const form = event.target;
+                if (!(form instanceof HTMLFormElement)) {
+                    return;
+                }
+
+                if (form.dataset.skipConfirm === 'true' || form.dataset.confirmed === 'true') {
+                    return;
+                }
+
+                const methodOverride = form.querySelector('input[name="_method"]')?.value;
+                const method = (methodOverride || form.getAttribute('method') || 'GET').toUpperCase();
+                const action = (form.getAttribute('action') || '').toLowerCase();
+
+                const hasExplicitConfig =
+                    form.hasAttribute('data-confirm-title') ||
+                    form.hasAttribute('data-confirm-message') ||
+                    form.hasAttribute('data-confirm-submit');
+
+                const isDeleteAction = method === 'DELETE' || action.includes('destroy') || action.includes('force-delete');
+
+                if (!hasExplicitConfig && !isDeleteAction) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                const isPermanentDelete = action.includes('force-delete') || form.dataset.confirmType === 'permanent-delete';
+                const isDanger = isDeleteAction || form.dataset.confirmDanger === 'true';
+
+                const title = form.dataset.confirmTitle || (isPermanentDelete ? 'Permanently Delete Item?' : 'Delete Item?');
+                const message = form.dataset.confirmMessage || (isPermanentDelete
+                    ? 'This action is permanent and cannot be undone.'
+                    : 'This item will be moved to trash. You can restore it later.');
+                const submitText = form.dataset.confirmSubmit || (isPermanentDelete ? 'Delete Permanently' : 'Delete');
+
+                pendingForm = form;
+                openModal({ title, message, submitText, isDanger });
+            }, true);
+        })();
     </script>
 </body>
 </html>
