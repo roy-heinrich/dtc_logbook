@@ -271,6 +271,19 @@ class ExportController extends Controller
                     $discoveredBinaries[] = $candidate;
                 }
             }
+        } else {
+            $linuxCandidates = [
+                '/usr/bin/python3',
+                '/usr/local/bin/python3',
+                '/usr/bin/python',
+                '/usr/local/bin/python',
+            ];
+
+            foreach ($linuxCandidates as $candidate) {
+                if (is_file($candidate) && is_executable($candidate)) {
+                    $discoveredBinaries[] = $candidate;
+                }
+            }
         }
 
         $absoluteBinaries = array_values(array_unique(array_filter(array_merge($configuredBinaries, $discoveredBinaries))));
@@ -279,7 +292,9 @@ class ExportController extends Controller
             return $absoluteBinaries;
         }
 
-        return ['python', 'py', 'python3'];
+        return PHP_OS_FAMILY === 'Windows'
+            ? ['python', 'py', 'python3']
+            : ['python3', 'python'];
     }
 
     private function generateAttendanceWorkbook(

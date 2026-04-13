@@ -4,6 +4,8 @@ FROM php:8.2-cli
 RUN apt-get update && apt-get install -y \
     git \
     curl \
+    python3 \
+    python3-pip \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
@@ -21,6 +23,9 @@ RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
 RUN docker-php-ext-install pdo_pgsql pgsql mbstring exif pcntl bcmath gd zip
+
+# Install Python packages used by the Excel export generator
+RUN python3 -m pip install --no-cache-dir openpyxl pillow
 
 # Get latest Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer

@@ -7,11 +7,10 @@ from copy import copy
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOCAL_PYTHON_PACKAGES = os.path.join(PROJECT_ROOT, 'python_packages')
 
-if os.path.isdir(LOCAL_PYTHON_PACKAGES) and LOCAL_PYTHON_PACKAGES not in sys.path:
+if os.name == 'nt' and os.path.isdir(LOCAL_PYTHON_PACKAGES) and LOCAL_PYTHON_PACKAGES not in sys.path:
     sys.path.insert(0, LOCAL_PYTHON_PACKAGES)
 
 from openpyxl import load_workbook
-from openpyxl.drawing.image import Image
 from openpyxl.styles import Font
 
 
@@ -40,6 +39,11 @@ def format_contact(email, number):
 
 
 def apply_header_image(sheet):
+    try:
+        from openpyxl.drawing.image import Image
+    except Exception:
+        return
+
     header_candidates = [
         os.path.join(PROJECT_ROOT, '-header.png'),
         os.path.join(PROJECT_ROOT, 'public', 'images', 'header-banner.png'),
