@@ -41,7 +41,29 @@
     @stack('styles')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
+@php
+    $currentRouteName = request()->route()?->getName() ?? '';
+    $pageSkeletonType = str_contains($currentRouteName, 'dashboard')
+        ? 'dashboard'
+        : (str_contains($currentRouteName, 'create') || str_contains($currentRouteName, 'edit')
+            ? 'form'
+            : (str_contains($currentRouteName, 'show')
+                ? 'detail'
+                : 'table'));
+@endphp
 <body class="min-h-screen shader-bg text-slate-700 dark:text-slate-100">
+    <!-- Global Page Loading Overlay -->
+    <div 
+        id="global-page-loading-overlay" 
+        class="fixed inset-0 z-[8000] bg-gradient-to-br from-white/95 to-slate-50/95 dark:from-slate-950/95 dark:to-slate-900/95 backdrop-blur-sm"
+        style="display: flex; opacity: 1; transition: opacity 0.2s ease-in;"
+        aria-hidden="true"
+    >
+        <div id="page-loading-skeleton-target" class="h-full w-full">
+            @includeIf('components.page-skeleton.' . $pageSkeletonType)
+        </div>
+    </div>
+
     @include('components.global-toasts')
 
     <div
@@ -229,6 +251,95 @@
                 openModal({ title, message, submitText, isDanger });
             }, true);
         })();
+
+        // Global page loading overlay
+        (() => {
+            const loadingOverlay = document.getElementById('global-page-loading-overlay');
+            const loadingSkeletonTarget = document.getElementById('page-loading-skeleton-target');
+            if (!loadingOverlay) return;
+
+            const skeletonTemplates = {
+                dashboard: @json(view('components.page-skeleton.dashboard')->render()),
+                table: @json(view('components.page-skeleton.table')->render()),
+                form: @json(view('components.page-skeleton.form')->render()),
+                detail: @json(view('components.page-skeleton.detail')->render()),
+            };
+
+            const inferSkeletonType = (link) => {
+                const explicitType = link.dataset.pageSkeleton || '';
+                if (explicitType && skeletonTemplates[explicitType]) {
+                    return explicitType;
+                }
+
+                const href = (link.getAttribute('href') || '').toLowerCase();
+
+                if (href.includes('dashboard')) return 'dashboard';
+                if (href.includes('/create') || href.includes('/edit') || href.includes('/settings')) return 'form';
+                if (href.includes('/show') || href.includes('/view')) return 'detail';
+                return 'table';
+            };
+
+            const setSkeletonType = (type) => {
+                if (!loadingSkeletonTarget || !skeletonTemplates[type]) {
+                    return;
+                }
+
+                loadingSkeletonTarget.innerHTML = skeletonTemplates[type];
+            };
+
+            // Hide loading overlay when page is fully loaded
+            const hideLoading = () => {
+                setTimeout(() => {
+                    loadingOverlay.style.opacity = '0';
+                    loadingOverlay.style.transition = 'opacity 0.3s ease-out';
+                    setTimeout(() => {
+                        loadingOverlay.style.display = 'none';
+                        loadingOverlay.style.opacity = '1';
+                        loadingOverlay.style.transition = 'opacity 0.2s ease-in';
+                    }, 300);
+                }, 100);
+            };
+
+            const showLoading = (type) => {
+                setSkeletonType(type);
+                loadingOverlay.style.display = 'flex';
+                loadingOverlay.style.opacity = '1';
+            };
+
+            // Hide when document is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', hideLoading);
+            } else {
+                hideLoading();
+            }
+
+            // Show overlay when clicking navigation links
+            document.addEventListener('pointerdown', (event) => {
+                const link = event.target.closest('a');
+                if (!link) return;
+
+                const href = link.getAttribute('href') || '';
+                // Skip if it's an external link, anchor, or has special attributes
+                if (!href || href.startsWith('#') || href.startsWith('http') || link.target === '_blank' || link.download) {
+                    return;
+                }
+
+                showLoading(inferSkeletonType(link));
+            }, true);
+
+            document.addEventListener('click', (event) => {
+                const link = event.target.closest('a');
+                if (!link) return;
+
+                const href = link.getAttribute('href') || '';
+                if (!href || href.startsWith('#') || href.startsWith('http') || link.target === '_blank' || link.download) {
+                    return;
+                }
+
+                showLoading(inferSkeletonType(link));
+            }, true);
+        })();
     </script>
+
 </body>
 </html>

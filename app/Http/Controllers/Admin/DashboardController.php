@@ -470,4 +470,73 @@ class DashboardController extends Controller
             return $point;
         });
     }
+
+    /**
+     * API Endpoint: Get dashboard stat widget data
+     */
+    public function stat(Request $request)
+    {
+        $type = $request->query('type', 'users');
+
+        return Cache::remember("dashboard.stat.{$type}", 300, function () use ($type) {
+            return match ($type) {
+                'revenue' => [
+                    'label' => 'Total Revenue',
+                    'value' => '₱' . number_format(Activity::count() * 150, 0), // Placeholder calculation
+                ],
+                'orders' => [
+                    'label' => 'Total Activities',
+                    'value' => number_format(Activity::count()),
+                ],
+                'users' => [
+                    'label' => 'Total Users',
+                    'value' => number_format(RegUser::count()),
+                ],
+                default => [
+                    'label' => 'Unknown',
+                    'value' => '—',
+                ],
+            };
+        });
+    }
+
+    /**
+     * API Endpoint: Get orders/activities table data
+     */
+    public function orders(Request $request)
+    {
+        return Cache::remember('dashboard.orders', 60, function () {
+            return Activity::with(['user:user_id,fname_user,lname_user'])
+                ->latest('activity_id')
+                ->limit(10)
+                ->get()
+                ->map(function ($activity) {
+                    return [
+                        'id' => $activity->activity_id,
+                        'order_number' => 'ACT-' . str_pad($activity->activity_id, 5, '0', STR_PAD_LEFT),
+                        'customer' => trim($activity->user?->fname_user . ' ' . $activity->user?->lname_user) ?: 'Unknown',
+                        'amount' => $activity->facility_used ?? '—',
+                    ];
+                });
+        });
+    }
+
+    /**
+     * API Endpoint: Get chart data
+     */
+    public function chart(Request $request)
+    {
+        $todayStart = Carbon::today()->startOfDay();
+        $todayEnd = Carbon::today()->endOfDay();
+
+        return Cache::remember('dashboard.chart', 60, function () use ($todayStart, $todayEnd) {
+            $chartData = $this->getActivityChart($todayStart, $todayEnd);
+
+            return [
+                'labels' => $chartData->pluck('date')->toArray(),
+                'data' => $chartData->pluck('total')->toArray(),
+                'percent' => $chartData->pluck('percent')->toArray(),
+            ];
+        });
+    }
 }
