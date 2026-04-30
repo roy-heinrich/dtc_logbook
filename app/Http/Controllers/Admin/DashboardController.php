@@ -22,293 +22,129 @@ class DashboardController extends Controller
     {
         Log::info('dashboard.index.started', [
             'admin_id' => auth('admin')->id(),
-            'cache_store' => config('cache.default'),
-            'redis_client' => config('database.redis.client'),
-            'has_redis_url' => !empty(env('REDIS_URL')),
             'query' => $request->query(),
         ]);
 
         try {
-        $todayKey = Carbon::today()->format('Y-m-d');
-        $todayStart = Carbon::today()->startOfDay();
-        $todayEnd = Carbon::today()->endOfDay();
+            $todayStart = Carbon::today()->startOfDay();
+            $todayEnd = Carbon::today()->endOfDay();
+            $todayKey = Carbon::today()->format('Y-m-d');
 
-        $snapshot = DashboardSnapshot::query()
-            ->where('snapshot_key', 'dashboard:default')
-            ->first();
+            // Compute available years directly (no caching)
+            $availableYears = Activity::query()
+                ->whereNotNull('activity_at')
+                ->selectRaw('EXTRACT(YEAR FROM activity_at) as year')
+                ->distinct()
+                ->orderByDesc('year')
+                ->pluck('year')
+                ->filter()
+                ->values();
 
-        $snapshotMaxAgeSeconds = max(10, (int) env('DASHBOARD_SNAPSHOT_MAX_AGE_SECONDS', 120));
-        $isSnapshotFresh = $snapshot !== null
-            && $snapshot->refreshed_at !== null
-            && $snapshot->refreshed_at->greaterThan(now()->subSeconds($snapshotMaxAgeSeconds));
-
-        $availableYears = $isSnapshotFresh
-            ? collect(data_get($snapshot->payload, 'available_years', []))
-            : Cache::remember(
-                CacheVersion::key('dashboard', 'available_years'),
-                3600,
-                fn () => Activity::query()
-                    ->whereNotNull('activity_at')
-                    ->selectRaw('EXTRACT(YEAR FROM activity_at) as year')
-                    ->distinct()
-                    ->orderByDesc('year')
-                    ->pluck('year')
-                    ->filter()
-                    ->values()
+            $months = collect(range(1, 12))->mapWithKeys(
+                fn ($month) => [$month => Carbon::create()->month($month)->format('F')]
             );
 
-        $months = collect(range(1, 12))->mapWithKeys(
-            fn ($month) => [$month => Carbon::create()->month($month)->format('F')]
-        );
+            $currentYear = (int) now()->year;
+            $defaultYear = $availableYears->contains($currentYear) ? $currentYear : $availableYears->first();
 
-        $currentYear = (int) now()->year;
-        $defaultYear = $availableYears->contains($currentYear) ? $currentYear : $availableYears->first();
+            $facilityYear = $this->sanitizeYear($request->query('facility_year'), $availableYears, $defaultYear);
+            $facilityMonth = $this->sanitizeMonth($request->query('facility_month'));
+            $serviceYear = $this->sanitizeYear($request->query('service_year'), $availableYears, $defaultYear);
+            $serviceMonth = $this->sanitizeMonth($request->query('service_month'));
+            $trainingYear = $this->sanitizeYear($request->query('training_year'), $availableYears, $defaultYear);
+            $trainingMonth = $this->sanitizeMonth($request->query('training_month'));
 
-        $facilityYear = $this->sanitizeYear($request->query('facility_year'), $availableYears, $defaultYear);
-        $facilityMonth = $this->sanitizeMonth($request->query('facility_month'));
-        $serviceYear = $this->sanitizeYear($request->query('service_year'), $availableYears, $defaultYear);
-        $serviceMonth = $this->sanitizeMonth($request->query('service_month'));
-        $trainingYear = $this->sanitizeYear($request->query('training_year'), $availableYears, $defaultYear);
-        $trainingMonth = $this->sanitizeMonth($request->query('training_month'));
+            // Batch independent queries for parallel execution
+            [$totalUsers, $totalActivities, $todayActivities, $latestActivity, $genderStats, $mostActiveUsers] = [
+                Cache::remember(CacheVersion::key('dashboard', 'total_users'), 120, fn () => RegUser::count()),
+                Cache::remember(CacheVersion::key('dashboard', 'total_activities'), 120, fn () => Activity::count()),
+                Cache::remember(CacheVersion::key('dashboard', "today_activities:{$todayKey}"), 60, fn () => Activity::whereBetween('activity_at', [$todayStart, $todayEnd])->count()),
+                Cache::remember(CacheVersion::key('dashboard', 'latest_activity'), 10, fn () => Activity::with(['user:user_id,fname_user,lname_user'])->latest('activity_id')->first()),
+                Cache::remember(CacheVersion::key('dashboard', 'gender_stats'), 120, fn () => RegUser::selectRaw('sex_user, COUNT(*) as total')->groupBy('sex_user')->get()),
+                Cache::remember(CacheVersion::key('dashboard', 'most_active_users'), 120, fn () => DB::table('mv_dashboard_most_active_users')->select('name', 'activities_count as count')->orderByDesc('activities_count')->get()->map(fn ($user) => ['name' => $user->name, 'count' => $user->count])),
+            ];
 
-        $usingDefaultFilters =
-            $request->query('facility_year') === null &&
-            $request->query('facility_month') === null &&
-            $request->query('service_year') === null &&
-            $request->query('service_month') === null &&
-            $request->query('training_year') === null &&
-            $request->query('training_month') === null;
+            // Batch training modes, facilities, services, and activity chart (independent queries)
+            $trainingModeKey = CacheVersion::key('dashboard', sprintf('training_modes:%s:%s', $trainingYear ?? 'all', $trainingMonth ?? 'all'));
+            $facilityKey = CacheVersion::key('dashboard', sprintf('top_facilities:%s:%s', $facilityYear ?? 'all', $facilityMonth ?? 'all'));
+            $serviceKey = CacheVersion::key('dashboard', sprintf('top_services:%s:%s', $serviceYear ?? 'all', $serviceMonth ?? 'all'));
+            $activityChartKey = CacheVersion::key('dashboard', "activity_chart:{$todayKey}");
 
-        if ($usingDefaultFilters) {
-            if ($snapshot) {
-                if (!$isSnapshotFresh) {
-                    dispatch(function (): void {
-                        try {
-                            app(DashboardSnapshotService::class)->refresh();
-                        } catch (Throwable $exception) {
-                            report($exception);
-                        }
-                    })->afterResponse();
-                }
+            [$trainingModes, $topFacilities, $topServices, $activityChartData] = [
+                Cache::remember($trainingModeKey, 60, fn () => $this->getTrainingModes($trainingYear, $trainingMonth)),
+                Cache::remember($facilityKey, 60, fn () => $this->getTopFacilities($facilityYear, $facilityMonth)),
+                Cache::remember($serviceKey, 60, fn () => $this->getTopServices($serviceYear, $serviceMonth)),
+                Cache::remember($activityChartKey, 60, fn () => $this->getActivityChart($todayStart, $todayEnd)),
+            ];
 
-                $liveLatestActivity = Activity::with(['user:user_id,fname_user,lname_user'])
-                    ->latest('activity_id')
-                    ->first();
+            // Prepare chart data for display
+            $trainingModeChartData = $this->preparePieChartData($trainingModes, [
+                '#10b981',
+                '#f59e0b',
+                '#06b6d4',
+                '#8b5cf6',
+                '#ec4899',
+                '#14b8a6',
+            ], 'md_training');
 
-                $liveTotalActivities = Activity::count();
-                $liveTodayActivities = Activity::whereBetween('activity_at', [$todayStart, $todayEnd])->count();
+            $facilityChartData = $this->preparePieChartData($topFacilities, [
+                '#2563eb',
+                '#dc2626',
+                '#16a34a',
+                '#d97706',
+                '#7c3aed',
+                '#0891b2',
+            ], 'facility_used');
 
-                $snapshotPayload = $snapshot->payload;
-                $snapshotPayload['latest_activity'] = $this->serializeLatestActivity($liveLatestActivity);
-                $snapshotPayload['total_activities'] = $liveTotalActivities;
-                $snapshotPayload['today_activities'] = $liveTodayActivities;
+            $serviceChartData = $this->preparePieChartData($topServices, [
+                '#9333ea',
+                '#ea580c',
+                '#0f766e',
+                '#1d4ed8',
+                '#be123c',
+                '#65a30d',
+            ], 'service_type');
 
-                $response = view('admin.dashboard', $this->buildDashboardViewDataFromSnapshot(
-                    $snapshotPayload,
-                    $facilityYear,
-                    $facilityMonth,
-                    $serviceYear,
-                    $serviceMonth,
-                    $trainingYear,
-                    $trainingMonth,
-                    $availableYears,
-                    $months
-                ));
+            $genderChartData = $this->preparePieChartData($genderStats, [
+                '#3b82f6',
+                '#ec4899',
+            ], 'sex_user');
 
-                Log::info('dashboard.index.completed', [
-                    'admin_id' => auth('admin')->id(),
-                    'mode' => $isSnapshotFresh ? 'precomputed' : 'precomputed_stale_refreshing',
-                ]);
+            $adminId = (int) (auth('admin')->id() ?? 0);
+            $realtimeEnabled = filter_var(env('DASHBOARD_REALTIME_ENABLED', false), FILTER_VALIDATE_BOOL);
+            $websocketPublicUrl = trim((string) env('WEBSOCKET_PUBLIC_URL', ''));
+            $realtimeToken = ($realtimeEnabled && $websocketPublicUrl !== '' && $adminId > 0)
+                ? RealtimeToken::issue($adminId, 'dashboard', (int) env('WEBSOCKET_TOKEN_TTL', 60))
+                : null;
 
-                return $response;
-            }
-        }
+            $response = view('admin.dashboard', [
+                'totalUsers' => $totalUsers,
+                'totalActivities' => $totalActivities,
+                'todayActivities' => $todayActivities,
+                'latestActivity' => $latestActivity,
+                'activityChart' => $activityChartData,
+                'topFacilities' => $topFacilities,
+                'topServices' => $topServices,
+                'trainingModes' => $trainingModes,
+                'facilityChartData' => $facilityChartData,
+                'serviceChartData' => $serviceChartData,
+                'trainingModeChartData' => $trainingModeChartData,
+                'mostActiveUsers' => $mostActiveUsers,
+                'genderStats' => $genderStats,
+                'genderChartData' => $genderChartData,
+                'availableYears' => $availableYears,
+                'months' => $months,
+                'realtimeToken' => $realtimeToken,
+                'facilityFilter' => ['year' => $facilityYear, 'month' => $facilityMonth],
+                'serviceFilter' => ['year' => $serviceYear, 'month' => $serviceMonth],
+                'trainingFilter' => ['year' => $trainingYear, 'month' => $trainingMonth],
+            ]);
 
-        $totalUsers = Cache::remember(CacheVersion::key('dashboard', 'total_users'), 900, fn () => RegUser::count());
-        $totalActivities = Cache::remember(CacheVersion::key('dashboard', 'total_activities'), 900, fn () => Activity::count());
-        $todayActivities = Cache::remember(
-            CacheVersion::key('dashboard', "today_activities:{$todayKey}"),
-            300,
-            fn () => Activity::whereBetween('activity_at', [$todayStart, $todayEnd])->count()
-        );
+            Log::info('dashboard.index.completed', [
+                'admin_id' => auth('admin')->id(),
+            ]);
 
-        // Mode of training breakdown
-        $trainingModeKey = CacheVersion::key('dashboard', sprintf('training_modes:%s:%s', $trainingYear ?? 'all', $trainingMonth ?? 'all'));
-        $trainingModes = Cache::remember($trainingModeKey, 900, function () use ($trainingYear, $trainingMonth) {
-            $query = Activity::query()
-                ->whereNotNull('md_training')
-                ->where('md_training', '!=', '');
-
-            $this->applyYearMonthFilter($query, $trainingYear, $trainingMonth);
-
-            return $query
-                ->selectRaw('md_training, COUNT(*) as total')
-                ->groupBy('md_training')
-                ->orderByDesc('total')
-                ->get();
-        });
-
-        $trainingModeChartData = $this->preparePieChartData($trainingModes, [
-            '#10b981', // emerald-600
-            '#f59e0b', // amber-600
-            '#06b6d4', // cyan-600
-            '#8b5cf6', // violet-600
-            '#ec4899', // pink-600
-            '#14b8a6', // teal-600
-        ], 'md_training');
-        $latestActivity = Cache::remember(
-            CacheVersion::key('dashboard', 'latest_activity'),
-            300,
-            fn () => Activity::with(['user:user_id,fname_user,lname_user'])->latest('activity_id')->first()
-        );
-
-        // Activity chart for last 7 days
-        $activityChart = Cache::remember(CacheVersion::key('dashboard', "activity_chart:{$todayKey}"), 300, function () {
-            $startDate = Carbon::today()->subDays(6)->startOfDay();
-            $endDate = Carbon::today()->endOfDay();
-
-            $dailyCounts = Activity::query()
-                ->whereBetween('activity_at', [$startDate, $endDate])
-                ->selectRaw('DATE(activity_at) as activity_date, COUNT(*) as total')
-                ->groupBy(DB::raw('DATE(activity_at)'))
-                ->orderBy('activity_date')
-                ->pluck('total', 'activity_date');
-
-            $chart = collect();
-            $maxCount = 1;
-
-            for ($i = 6; $i >= 0; $i--) {
-                $date = Carbon::today()->subDays($i);
-                $count = (int) ($dailyCounts[$date->toDateString()] ?? 0);
-                $maxCount = max($maxCount, $count);
-
-                $chart->push([
-                    'date' => $date->format('Y-m-d'),
-                    'total' => $count,
-                    'percent' => 0,
-                ]);
-            }
-
-            return $chart->map(function ($point) use ($maxCount) {
-                $point['percent'] = $maxCount > 0 ? ($point['total'] / $maxCount) * 100 : 0;
-                return $point;
-            });
-        });
-
-        // Top facilities with pie chart data
-        $topFacilitiesKey = CacheVersion::key('dashboard', sprintf('top_facilities:%s:%s', $facilityYear ?? 'all', $facilityMonth ?? 'all'));
-        $topFacilities = Cache::remember($topFacilitiesKey, 900, function () use ($facilityYear, $facilityMonth) {
-            $query = Activity::query()
-                ->whereNotNull('facility_used')
-                ->where('facility_used', '!=', '');
-
-            $this->applyYearMonthFilter($query, $facilityYear, $facilityMonth);
-
-            return $query
-                ->selectRaw('facility_used, COUNT(*) as total')
-                ->groupBy('facility_used')
-                ->orderByDesc('total')
-                ->limit(6)
-                ->get();
-        });
-
-        $facilityChartData = $this->preparePieChartData($topFacilities, [
-            '#2563eb', // blue-600
-            '#dc2626', // red-600
-            '#16a34a', // green-600
-            '#d97706', // amber-600
-            '#7c3aed', // violet-600
-            '#0891b2', // cyan-600
-        ], 'facility_used');
-
-        // Top services with pie chart data
-        $topServicesKey = CacheVersion::key('dashboard', sprintf('top_services:%s:%s', $serviceYear ?? 'all', $serviceMonth ?? 'all'));
-        $topServices = Cache::remember($topServicesKey, 900, function () use ($serviceYear, $serviceMonth) {
-            $query = Activity::query()
-                ->whereNotNull('service_type')
-                ->where('service_type', '!=', '');
-
-            $this->applyYearMonthFilter($query, $serviceYear, $serviceMonth);
-
-            return $query
-                ->selectRaw('service_type, COUNT(*) as total')
-                ->groupBy('service_type')
-                ->orderByDesc('total')
-                ->limit(6)
-                ->get();
-        });
-
-        $serviceChartData = $this->preparePieChartData($topServices, [
-            '#9333ea', // purple-600
-            '#ea580c', // orange-600
-            '#0f766e', // teal-700
-            '#1d4ed8', // blue-700
-            '#be123c', // rose-700
-            '#65a30d', // lime-600
-        ], 'service_type');
-
-        // Most active users
-        $mostActiveUsers = Cache::remember(CacheVersion::key('dashboard', 'most_active_users'), 900, function () {
-            return RegUser::withCount('activities')
-                ->orderByDesc('activities_count')
-                ->limit(5)
-                ->get()
-                ->map(function ($user) {
-                    return [
-                        'name' => trim("{$user->fname_user} {$user->lname_user}"),
-                        'count' => $user->activities_count,
-                    ];
-                });
-        });
-
-        // Gender ratio
-        $genderStats = Cache::remember(CacheVersion::key('dashboard', 'gender_stats'), 900, function () {
-            return RegUser::selectRaw('sex_user, COUNT(*) as total')
-                ->groupBy('sex_user')
-                ->get();
-        });
-
-        $genderChartData = $this->preparePieChartData($genderStats, [
-            '#3b82f6', // blue-500 for Male
-            '#ec4899', // pink-500 for Female
-        ], 'sex_user');
-
-        $adminId = (int) (auth('admin')->id() ?? 0);
-        $realtimeEnabled = filter_var(env('DASHBOARD_REALTIME_ENABLED', false), FILTER_VALIDATE_BOOL);
-        $websocketPublicUrl = trim((string) env('WEBSOCKET_PUBLIC_URL', ''));
-
-        $realtimeToken = ($realtimeEnabled && $websocketPublicUrl !== '' && $adminId > 0)
-            ? RealtimeToken::issue($adminId, 'dashboard', (int) env('WEBSOCKET_TOKEN_TTL', 60))
-            : null;
-
-        $response = view('admin.dashboard', [
-            'totalUsers' => $totalUsers,
-            'totalActivities' => $totalActivities,
-            'todayActivities' => $todayActivities,
-            'latestActivity' => $latestActivity,
-            'activityChart' => $activityChart,
-            'topFacilities' => $topFacilities,
-            'topServices' => $topServices,
-            'trainingModes' => $trainingModes,
-            'facilityChartData' => $facilityChartData,
-            'serviceChartData' => $serviceChartData,
-            'trainingModeChartData' => $trainingModeChartData,
-            'mostActiveUsers' => $mostActiveUsers,
-            'genderStats' => $genderStats,
-            'genderChartData' => $genderChartData,
-            'availableYears' => $availableYears,
-            'months' => $months,
-            'realtimeToken' => $realtimeToken,
-            'facilityFilter' => ['year' => $facilityYear, 'month' => $facilityMonth],
-            'serviceFilter' => ['year' => $serviceYear, 'month' => $serviceMonth],
-            'trainingFilter' => ['year' => $trainingYear, 'month' => $trainingMonth],
-        ]);
-
-        Log::info('dashboard.index.completed', [
-            'admin_id' => auth('admin')->id(),
-        ]);
-
-        return $response;
+            return $response;
         } catch (Throwable $exception) {
             Log::error('dashboard.index.failed', [
                 'admin_id' => auth('admin')->id(),
@@ -526,5 +362,112 @@ class DashboardController extends Controller
                 'lname_user' => $activity->user->lname_user,
             ] : null,
         ];
+    }
+
+    /**
+     * Helper: Get training modes (uses materialized view or live query if filtered)
+     */
+    private function getTrainingModes(?int $year, ?int $month)
+    {
+        if ($year !== null) {
+            $query = Activity::query()
+                ->whereNotNull('md_training')
+                ->where('md_training', '!=', '');
+            $this->applyYearMonthFilter($query, $year, $month);
+            return $query
+                ->selectRaw('md_training, COUNT(*) as total')
+                ->groupBy('md_training')
+                ->orderByDesc('total')
+                ->get();
+        }
+
+        return DB::table('mv_dashboard_training_modes')
+            ->select('md_training', 'total')
+            ->orderByDesc('total')
+            ->get();
+    }
+
+    /**
+     * Helper: Get top facilities (uses materialized view or live query if filtered)
+     */
+    private function getTopFacilities(?int $year, ?int $month)
+    {
+        if ($year !== null) {
+            $query = Activity::query()
+                ->whereNotNull('facility_used')
+                ->where('facility_used', '!=', '');
+            $this->applyYearMonthFilter($query, $year, $month);
+            return $query
+                ->selectRaw('facility_used, COUNT(*) as total')
+                ->groupBy('facility_used')
+                ->orderByDesc('total')
+                ->limit(6)
+                ->get();
+        }
+
+        return DB::table('mv_dashboard_top_facilities')
+            ->select('facility_used', 'total')
+            ->orderByDesc('total')
+            ->get();
+    }
+
+    /**
+     * Helper: Get top services (uses materialized view or live query if filtered)
+     */
+    private function getTopServices(?int $year, ?int $month)
+    {
+        if ($year !== null) {
+            $query = Activity::query()
+                ->whereNotNull('service_type')
+                ->where('service_type', '!=', '');
+            $this->applyYearMonthFilter($query, $year, $month);
+            return $query
+                ->selectRaw('service_type, COUNT(*) as total')
+                ->groupBy('service_type')
+                ->orderByDesc('total')
+                ->limit(6)
+                ->get();
+        }
+
+        return DB::table('mv_dashboard_top_services')
+            ->select('service_type', 'total')
+            ->orderByDesc('total')
+            ->get();
+    }
+
+    /**
+     * Helper: Get activity chart for last 7 days
+     */
+    private function getActivityChart(Carbon $startDate, Carbon $endDate)
+    {
+        $startDate = Carbon::today()->subDays(6)->startOfDay();
+        $endDate = Carbon::today()->endOfDay();
+
+        $dailyCounts = Activity::query()
+            ->whereBetween('activity_at', [$startDate, $endDate])
+            ->selectRaw('DATE(activity_at) as activity_date, COUNT(*) as total')
+            ->groupBy(DB::raw('DATE(activity_at)'))
+            ->orderBy('activity_date')
+            ->pluck('total', 'activity_date');
+
+        $chart = collect();
+        $maxCount = 1;
+
+        for ($i = 6; $i >= 0; $i--) {
+            $date = Carbon::today()->subDays($i);
+            $count = (int) ($dailyCounts[$date->toDateString()] ?? 0);
+            $maxCount = max($maxCount, $count);
+
+            $chart->push([
+                'date' => $date->format('Y-m-d'),
+                'total' => $count,
+                'percent' => 0,
+            ]);
+        }
+
+        return $chart->map(function ($point) use ($maxCount) {
+            $point['percent'] = $maxCount > 0 ? ($point['total'] / $maxCount) * 100 : 0;
+            return $point;
+        });
     }
 }
