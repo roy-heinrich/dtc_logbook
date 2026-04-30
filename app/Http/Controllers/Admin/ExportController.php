@@ -164,10 +164,8 @@ class ExportController extends Controller
                 'sex' => (string) ($user?->sex_user ?? ''),
                 'age' => $age,
                 'service' => $servicesAvailed,
-                'email' => (string) ($user?->email_user ?? ''),
                 'number' => (string) ($user?->number_user ?? ''),
                 'sector' => (string) ($user?->sector_user ?? $activity->sector_user ?? ''),
-                'terms_user' => (string) ($user?->terms_user ?? ''),
             ];
         })->values()->all();
 
@@ -331,7 +329,6 @@ class ExportController extends Controller
             ['type' => 'string', 'value' => 'Services Availed'],
             ['type' => 'string', 'value' => 'Contact Information'],
             ['type' => 'string', 'value' => 'Sector'],
-            ['type' => 'string', 'value' => 'Terms'],
         ];
 
         foreach ($attendees as $attendee) {
@@ -340,9 +337,8 @@ class ExportController extends Controller
                 ['type' => 'string', 'value' => (string) ($attendee['sex'] ?? '')],
                 ['type' => 'number', 'value' => (string) ($attendee['age'] ?? '')],
                 ['type' => 'string', 'value' => (string) ($attendee['service'] ?? '')],
-                ['type' => 'string', 'value' => trim((string) (($attendee['email'] ?? '') . ' | ' . ($attendee['number'] ?? '')))],
+                ['type' => 'string', 'value' => (string) ($attendee['number'] ?? '')],
                 ['type' => 'string', 'value' => (string) ($attendee['sector'] ?? '')],
-                ['type' => 'string', 'value' => (string) ($attendee['terms_user'] ?? '')],
             ];
         }
 
@@ -548,7 +544,6 @@ class ExportController extends Controller
         $html .= '<thead>';
         $html .= '<tr>';
         $html .= '<th>Name</th>';
-        $html .= '<th>Email</th>';
         $html .= '<th>Facility Used</th>';
         $html .= '<th>Service Type</th>';
         $html .= '<th>Date</th>';
@@ -561,7 +556,6 @@ class ExportController extends Controller
             $activityAt = $activity->activity_at?->timezone(config('app.timezone'));
             $html .= '<tr>';
             $html .= '<td>' . ($activity->user?->fname_user . ' ' . $activity->user?->lname_user) . '</td>';
-            $html .= '<td>' . ($activity->user?->email_user ?? 'N/A') . '</td>';
             $html .= '<td>' . ($activity->facility_used ?? '-') . '</td>';
             $html .= '<td>' . ($activity->service_type ?? '-') . '</td>';
             $html .= '<td>' . ($activityAt?->format('Y-m-d') ?? '-') . '</td>';
@@ -594,19 +588,19 @@ class ExportController extends Controller
 
         $handle = fopen('php://temp', 'w+');
 
-        fputcsv($handle, ['Name', 'Email', 'Facility Used', 'Service Type', 'Terms']);
+        fputcsv($handle, ['Name', 'Number', 'Facility Used', 'Service Type', 'Sector']);
 
         foreach ($activities as $activity) {
             $activityAt = $activity->activity_at?->timezone(config('app.timezone'));
             $name = trim((string) (($activity->user?->fname_user ?? '') . ' ' . ($activity->user?->lname_user ?? '')));
-            $terms = (string) ($activity->user?->terms_user ?? '');
+            $sector = (string) ($activity->user?->sector_user ?? '');
 
             fputcsv($handle, [
                 $name,
-                (string) ($activity->user?->email_user ?? ''),
+                (string) ($activity->user?->number_user ?? ''),
                 (string) ($activity->facility_used ?? ''),
                 (string) ($activity->service_type ?? ''),
-                $terms,
+                $sector,
             ]);
         }
 
@@ -696,7 +690,7 @@ class ExportController extends Controller
                     $html .= '<td class="px-2 py-2 text-slate-900 dark:text-slate-100 text-xs whitespace-normal break-words">' . htmlspecialchars($activity->service_type ?? '-', ENT_QUOTES, 'UTF-8') . '</td>';
                     $html .= '<td class="px-2 py-2 text-slate-900 dark:text-slate-100 text-xs whitespace-normal break-words">' . ($activityAt?->format('Y-m-d') ?? '-') . '</td>';
                     $html .= '<td class="px-2 py-2 text-slate-900 dark:text-slate-100 text-xs whitespace-normal break-words">' . htmlspecialchars($activityAt?->format('H:i') ?? '-', ENT_QUOTES, 'UTF-8') . '</td>';
-                    $html .= '<td class="px-2 py-2 text-slate-900 dark:text-slate-100 text-xs whitespace-normal break-words">' . htmlspecialchars($activity->user?->terms_user ?? '-', ENT_QUOTES, 'UTF-8') . '</td>';
+                    $html .= '<td class="px-2 py-2 text-slate-900 dark:text-slate-100 text-xs whitespace-normal break-words">' . htmlspecialchars($activity->user?->sector_user ?? '-', ENT_QUOTES, 'UTF-8') . '</td>';
                     $html .= '</tr>';
                 }
             } else {
@@ -731,7 +725,7 @@ class ExportController extends Controller
 
         if ($withUser) {
             $query->with([
-                'user:user_id,fname_user,mname_user,lname_user,suffix_user,number_user,sector_user,birthdate,sex_user,terms_user',
+                'user:user_id,fname_user,mname_user,lname_user,suffix_user,number_user,sector_user,birthdate,sex_user',
             ]);
         }
 

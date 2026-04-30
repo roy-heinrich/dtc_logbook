@@ -3,262 +3,297 @@
 @php($pageTitle = 'Dashboard')
 
 @section('content')
-    <div class="grid gap-4 sm:gap-6 sm:grid-cols-2 xl:grid-cols-4">
-        <div class="rounded-lg glass-card p-5 h-full min-h-[132px] flex flex-col justify-between">
-            <div class="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Users</div>
-            <div class="mt-3 text-3xl font-semibold text-slate-900 dark:text-white">{{ number_format($totalUsers) }}</div>
-        </div>
-        <div class="rounded-lg glass-card p-5 h-full min-h-[132px] flex flex-col justify-between">
-            <div class="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Activities</div>
-            <div class="mt-3 text-3xl font-semibold text-slate-900 dark:text-white" data-dashboard-total-activities>{{ number_format($totalActivities) }}</div>
-        </div>
-        <div class="rounded-lg glass-card p-5 h-full min-h-[132px] flex flex-col justify-between">
-            <div class="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Today</div>
-            <div class="mt-3 text-3xl font-semibold text-slate-900 dark:text-white" data-dashboard-today-activities>{{ number_format($todayActivities) }}</div>
-        </div>
-        <div class="rounded-lg glass-card latest-activity-card p-5 h-full min-h-[132px] flex flex-col justify-between">
-            <div class="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Latest Activity</div>
-            <div class="mt-3 text-sm md:text-base text-slate-800 dark:text-slate-300">
-                @if ($latestActivity)
-                    <div class="font-semibold text-slate-900 dark:text-white latest-activity-name">
-                        {{ $latestActivity->user?->lname_user }}, {{ $latestActivity->user?->fname_user }}
-                    </div>
-                    <div class="text-slate-600 dark:text-slate-400 latest-activity-time">{{ $latestActivity->activity_at?->timezone(config('app.timezone'))->format('Y-m-d H:i') }}</div>
-                @else
-                    No activity data available
-                @endif
+    <!-- Page Loading Indicator (Initial Load Only) -->
+    <div id="dashboard-loader" class="fixed inset-0 bg-gradient-to-br from-white/80 to-slate-50/80 dark:from-slate-950/80 dark:to-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 opacity-100">
+        <div class="text-center">
+            <div class="inline-flex items-center gap-2">
+                <div class="w-2 h-2 bg-brand-500 rounded-full animate-bounce" style="animation-delay: 0s"></div>
+                <div class="w-2 h-2 bg-brand-500 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                <div class="w-2 h-2 bg-brand-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
             </div>
+            <p class="text-slate-600 dark:text-slate-400 text-sm mt-3">Loading dashboard...</p>
         </div>
     </div>
 
-    <div class="mt-8 grid gap-4 sm:gap-6 lg:grid-cols-3 items-stretch">
-        <div class="lg:col-span-2 rounded-lg glass-card p-4 sm:p-6 overflow-hidden h-full">
-            <h3 class="text-base md:text-lg font-semibold text-slate-900 dark:text-white mb-6">Activity Volume (Last 7 days)</h3>
-            <div class="relative h-56 sm:h-64 md:h-72">
-                <canvas id="activityVolumeChart"></canvas>
+    <div x-data="dashboardState()" class="space-y-6" data-dashboard-content>
+        <!-- Stats Row -->
+        <div class="space-y-6">
+            <div x-show="loading" x-cloak class="grid gap-4 sm:gap-6 sm:grid-cols-2 xl:grid-cols-4 animate-fade-in">
+                <x-skeleton-stat :count="4" />
+            </div>
+
+            <div x-show="!loading" x-cloak class="grid gap-4 sm:gap-6 sm:grid-cols-2 xl:grid-cols-4 animate-fade-in">
+                <div class="rounded-lg glass-card p-5 h-full min-h-[132px] flex flex-col justify-between">
+                    <div class="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Users</div>
+                    <div class="mt-3 text-3xl font-semibold text-slate-900 dark:text-white">{{ number_format($totalUsers) }}</div>
+                </div>
+                <div class="rounded-lg glass-card p-5 h-full min-h-[132px] flex flex-col justify-between">
+                    <div class="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Activities</div>
+                    <div class="mt-3 text-3xl font-semibold text-slate-900 dark:text-white" data-dashboard-total-activities>{{ number_format($totalActivities) }}</div>
+                </div>
+                <div class="rounded-lg glass-card p-5 h-full min-h-[132px] flex flex-col justify-between">
+                    <div class="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Today</div>
+                    <div class="mt-3 text-3xl font-semibold text-slate-900 dark:text-white" data-dashboard-today-activities>{{ number_format($todayActivities) }}</div>
+                </div>
+                <div class="rounded-lg glass-card latest-activity-card p-5 h-full min-h-[132px] flex flex-col justify-between">
+                    <div class="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Latest Activity</div>
+                    <div class="mt-3 text-sm md:text-base text-slate-800 dark:text-slate-300">
+                        @if ($latestActivity)
+                            <div class="font-semibold text-slate-900 dark:text-white latest-activity-name">
+                                {{ $latestActivity->user?->lname_user }}, {{ $latestActivity->user?->fname_user }}
+                            </div>
+                            <div class="text-slate-600 dark:text-slate-400 latest-activity-time">{{ $latestActivity->activity_at?->timezone(config('app.timezone'))->format('Y-m-d H:i') }}</div>
+                        @else
+                            No activity data available
+                        @endif
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="rounded-lg glass-card p-4 sm:p-6 h-full min-h-[320px] sm:min-h-[352px] flex flex-col">
-            <h3 class="text-base md:text-lg font-semibold text-slate-900 dark:text-white mb-4">Most Active Users</h3>
-            @if ($mostActiveUsers->isNotEmpty())
-                <div class="space-y-3 overflow-y-auto flex-1 pr-1">
-                    @foreach ($mostActiveUsers as $user)
-                        <div class="flex items-start justify-between gap-3 min-w-0">
-                            <span class="min-w-0 flex-1 break-words text-sm md:text-base text-slate-700 dark:text-slate-300">{{ $user['name'] }}</span>
-                            <span class="shrink-0 text-sm md:text-base font-semibold text-slate-900 dark:text-white">{{ $user['count'] }}</span>
-                        </div>
-                    @endforeach
+        <div class="mt-8 grid gap-4 sm:gap-6 lg:grid-cols-3 items-stretch">
+        <!-- Activity Volume Chart -->
+        <div class="lg:col-span-2 rounded-lg glass-card p-4 sm:p-6 overflow-hidden h-full min-h-[320px]">
+            <template x-if="loading">
+                <x-skeleton-chart title="Activity Volume (Last 7 days)" />
+            </template>
+            
+            <template x-if="!loading">
+                <div>
+                    <h3 class="text-base md:text-lg font-semibold text-slate-900 dark:text-white mb-6">Activity Volume (Last 7 days)</h3>
+                    <div class="relative h-56 sm:h-64 md:h-72">
+                        <canvas id="activityVolumeChart"></canvas>
+                    </div>
                 </div>
-            @else
-                <div class="text-sm text-slate-600 dark:text-slate-400">No activity data</div>
-            @endif
+            </template>
+        </div>
+
+        <!-- Most Active Users -->
+        <div class="rounded-lg glass-card p-4 sm:p-6 h-full min-h-[320px] sm:min-h-[352px] flex flex-col">
+            <template x-if="loading">
+                <x-skeleton-table title="Most Active Users" :rows="5" />
+            </template>
+            
+            <template x-if="!loading">
+                <div class="flex flex-col h-full">
+                    <h3 class="text-base md:text-lg font-semibold text-slate-900 dark:text-white mb-4">Most Active Users</h3>
+                    @if ($mostActiveUsers->isNotEmpty())
+                        <div class="space-y-3 overflow-y-auto flex-1 pr-1">
+                            @foreach ($mostActiveUsers as $user)
+                                <div class="flex items-start justify-between gap-3 min-w-0">
+                                    <span class="min-w-0 flex-1 break-words text-sm md:text-base text-slate-700 dark:text-slate-300">{{ $user['name'] }}</span>
+                                    <span class="shrink-0 text-sm md:text-base font-semibold text-slate-900 dark:text-white">{{ $user['count'] }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="text-sm text-slate-600 dark:text-slate-400">No activity data</div>
+                    @endif
+                </div>
+            </template>
         </div>
     </div>
 
     <div class="mt-6 grid items-stretch gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <!-- Gender Distribution -->
         <div class="rounded-lg glass-card p-5 h-full min-h-[220px] flex flex-col overflow-hidden">
-            <h3 class="text-base md:text-lg font-semibold text-slate-900 dark:text-white mb-3">Gender Distribution</h3>
-            @if ($genderStats->isNotEmpty())
-                <div class="flex flex-col sm:flex-row gap-4 sm:gap-3 items-center sm:items-start flex-1 min-h-0">
-                    <div class="relative w-28 h-28 sm:w-24 sm:h-24 md:w-28 md:h-28 max-w-full flex-shrink-0">
-                        <canvas id="genderDistributionChart"></canvas>
-                    </div>
-                    <div class="flex-1 space-y-1 w-full min-w-0 max-h-40 overflow-y-auto pr-1">
-                        @foreach ($genderChartData['slices'] as $slice)
-                            <div class="flex items-center justify-between gap-2 text-sm md:text-base">
-                                <div class="flex items-center gap-2 min-w-0 flex-1">
-                                    <div class="w-3 h-3 rounded flex-shrink-0" style="background-color: {{ $slice['color'] }}"></div>
-                                    <span class="text-slate-700 dark:text-slate-300 break-words">{{ $slice['label'] === 'M' ? 'Male' : 'Female' }}</span>
-                                </div>
-                                <span class="font-semibold text-slate-900 dark:text-white whitespace-nowrap flex-shrink-0">{{ $slice['value'] }}</span>
+            <template x-if="loading">
+                <x-skeleton-chart title="Gender Distribution" />
+            </template>
+            
+            <template x-if="!loading">
+                <div class="flex flex-col h-full">
+                    <h3 class="text-base md:text-lg font-semibold text-slate-900 dark:text-white mb-3">Gender Distribution</h3>
+                    @if ($genderStats->isNotEmpty())
+                        <div class="flex flex-col sm:flex-row gap-4 sm:gap-3 items-center sm:items-start flex-1 min-h-0">
+                            <div class="relative w-28 h-28 sm:w-24 sm:h-24 md:w-28 md:h-28 max-w-full flex-shrink-0">
+                                <canvas id="genderDistributionChart"></canvas>
                             </div>
-                        @endforeach
-                    </div>
+                            <div class="flex-1 space-y-1 w-full min-w-0 max-h-40 overflow-y-auto pr-1">
+                                @foreach ($genderChartData['slices'] as $slice)
+                                    <div class="flex items-center justify-between gap-2 text-sm md:text-base">
+                                        <div class="flex items-center gap-2 min-w-0 flex-1">
+                                            <div class="w-3 h-3 rounded flex-shrink-0" style="background-color: {{ $slice['color'] }}"></div>
+                                            <span class="text-slate-700 dark:text-slate-300 break-words">{{ $slice['label'] === 'M' ? 'Male' : 'Female' }}</span>
+                                        </div>
+                                        <span class="font-semibold text-slate-900 dark:text-white whitespace-nowrap flex-shrink-0">{{ $slice['value'] }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @else
+                        <div class="text-sm text-slate-600 dark:text-slate-400">No user data</div>
+                    @endif
                 </div>
-            @else
-                <div class="text-sm text-slate-600 dark:text-slate-400">No user data</div>
-            @endif
+            </template>
         </div>
 
+        <!-- Top Facilities -->
         <div id="top-facilities-card" class="relative rounded-lg glass-card p-5 h-full min-h-[220px] flex flex-col overflow-hidden">
-            <div data-card-content class="contents">
-            <div class="mb-3 flex items-start justify-between gap-2">
-                <h3 class="text-base md:text-lg font-semibold text-slate-900 dark:text-white">Top Facilities</h3>
-                <form method="GET" action="{{ route('admin.dashboard') }}" class="flex items-center gap-1 text-xs" data-dashboard-filter>
-                    <input type="hidden" name="service_year" value="{{ $serviceFilter['year'] }}">
-                    <input type="hidden" name="service_month" value="{{ $serviceFilter['month'] }}">
-                    <input type="hidden" name="training_year" value="{{ $trainingFilter['year'] }}">
-                    <input type="hidden" name="training_month" value="{{ $trainingFilter['month'] }}">
-                    <select name="facility_year" class="rounded border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800">
-                        @foreach ($availableYears as $year)
-                            <option value="{{ $year }}" @selected((int) $facilityFilter['year'] === (int) $year)>{{ $year }}</option>
-                        @endforeach
-                    </select>
-                    <select name="facility_month" class="rounded border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800">
-                        <option value="">All months</option>
-                        @foreach ($months as $monthNumber => $monthName)
-                            <option value="{{ $monthNumber }}" @selected((int) $facilityFilter['month'] === (int) $monthNumber)>{{ $monthName }}</option>
-                        @endforeach
-                    </select>
-                </form>
-            </div>
-            @if ($topFacilities->isNotEmpty())
-                <div class="flex flex-col sm:flex-row gap-4 items-center sm:items-start flex-1 min-h-0">
-                    <div class="relative w-28 h-28 sm:w-24 sm:h-24 md:w-28 md:h-28 max-w-full flex-shrink-0">
-                        <canvas id="topFacilitiesChart" data-slices='@json($facilityChartData['slices'])'></canvas>
+            <template x-if="loading">
+                <x-skeleton-chart title="Top Facilities" />
+            </template>
+            
+            <template x-if="!loading">
+                <div class="contents">
+                    <div class="mb-3 flex items-start justify-between gap-2">
+                        <h3 class="text-base md:text-lg font-semibold text-slate-900 dark:text-white">Top Facilities</h3>
+                        <form method="GET" action="{{ route('admin.dashboard') }}" class="flex items-center gap-1 text-xs" data-dashboard-filter>
+                            <input type="hidden" name="service_year" value="{{ $serviceFilter['year'] }}">
+                            <input type="hidden" name="service_month" value="{{ $serviceFilter['month'] }}">
+                            <input type="hidden" name="training_year" value="{{ $trainingFilter['year'] }}">
+                            <input type="hidden" name="training_month" value="{{ $trainingFilter['month'] }}">
+                            <select name="facility_year" class="rounded border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800" @change="$el.form.submit()">
+                                @foreach ($availableYears as $year)
+                                    <option value="{{ $year }}" @selected((int) $facilityFilter['year'] === (int) $year)>{{ $year }}</option>
+                                @endforeach
+                            </select>
+                            <select name="facility_month" class="rounded border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800" @change="$el.form.submit()">
+                                <option value="">All months</option>
+                                @foreach ($months as $monthNumber => $monthName)
+                                    <option value="{{ $monthNumber }}" @selected((int) $facilityFilter['month'] === (int) $monthNumber)>{{ $monthName }}</option>
+                                @endforeach
+                            </select>
+                        </form>
                     </div>
-                    <div class="flex-1 min-w-0 w-full">
-                        <div class="h-36 overflow-y-scroll scroll-container dashboard-scroll">
-                            <div class="pr-6 space-y-2">
-                            @foreach ($facilityChartData['slices'] as $slice)
-                                <div class="flex justify-between items-center gap-3 text-sm md:text-base">
-                                    <div class="flex items-center gap-2 min-w-0 flex-1">
-                                        <div class="w-3 h-3 rounded flex-shrink-0" style="background-color: {{ $slice['color'] }}"></div>
-                                        <span class="text-slate-700 dark:text-slate-300 truncate">{{ $slice['label'] }}</span>
+                    @if ($topFacilities->isNotEmpty())
+                        <div class="flex flex-col sm:flex-row gap-4 items-center sm:items-start flex-1 min-h-0">
+                            <div class="relative w-28 h-28 sm:w-24 sm:h-24 md:w-28 md:h-28 max-w-full flex-shrink-0">
+                                <canvas id="topFacilitiesChart" data-slices='@json($facilityChartData['slices'])'></canvas>
+                            </div>
+                            <div class="flex-1 min-w-0 w-full">
+                                <div class="h-36 overflow-y-scroll scroll-container dashboard-scroll">
+                                    <div class="pr-6 space-y-2">
+                                    @foreach ($facilityChartData['slices'] as $slice)
+                                        <div class="flex justify-between items-center gap-3 text-sm md:text-base">
+                                            <div class="flex items-center gap-2 min-w-0 flex-1">
+                                                <div class="w-3 h-3 rounded flex-shrink-0" style="background-color: {{ $slice['color'] }}"></div>
+                                                <span class="text-slate-700 dark:text-slate-300 truncate">{{ $slice['label'] }}</span>
+                                            </div>
+                                            <span class="font-semibold text-slate-900 dark:text-white whitespace-nowrap shrink-0 pr-1 pl-2">{{ $slice['value'] }}</span>
+                                        </div>
+                                    @endforeach
                                     </div>
-                                    <span class="font-semibold text-slate-900 dark:text-white whitespace-nowrap shrink-0 pr-1 pl-2">{{ $slice['value'] }}</span>
                                 </div>
-                            @endforeach
                             </div>
                         </div>
-                    </div>
+                    @else
+                        <div class="text-sm text-slate-600 dark:text-slate-400">No facilities recorded</div>
+                    @endif
                 </div>
-            @else
-                <div class="text-sm text-slate-600 dark:text-slate-400">No facilities recorded</div>
-            @endif
-            </div>
-            <div data-loading-overlay class="absolute inset-0 hidden items-center justify-center bg-slate-900/35 backdrop-blur-[1px]">
-                <div class="flex flex-col items-center justify-center gap-2 rounded-md bg-white/90 px-4 py-3 text-sm font-medium text-slate-700 shadow-sm dark:bg-slate-800/90 dark:text-slate-200">
-                    <div class="newtons-cradle" aria-hidden="true">
-                        <div class="newtons-cradle__dot"></div>
-                        <div class="newtons-cradle__dot"></div>
-                        <div class="newtons-cradle__dot"></div>
-                        <div class="newtons-cradle__dot"></div>
-                    </div>
-                    Please wait...
-                </div>
-            </div>
+            </template>
         </div>
 
+        <!-- Top Services -->
         <div id="top-services-card" class="relative rounded-lg glass-card p-5 h-full min-h-[220px] flex flex-col overflow-hidden">
-            <div data-card-content class="contents">
-            <div class="mb-3 flex items-start justify-between gap-2">
-                <h3 class="text-base md:text-lg font-semibold text-slate-900 dark:text-white">Top Service Types</h3>
-                <form method="GET" action="{{ route('admin.dashboard') }}" class="flex items-center gap-1 text-xs" data-dashboard-filter>
-                    <input type="hidden" name="facility_year" value="{{ $facilityFilter['year'] }}">
-                    <input type="hidden" name="facility_month" value="{{ $facilityFilter['month'] }}">
-                    <input type="hidden" name="training_year" value="{{ $trainingFilter['year'] }}">
-                    <input type="hidden" name="training_month" value="{{ $trainingFilter['month'] }}">
-                    <select name="service_year" class="rounded border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800">
-                        @foreach ($availableYears as $year)
-                            <option value="{{ $year }}" @selected((int) $serviceFilter['year'] === (int) $year)>{{ $year }}</option>
-                        @endforeach
-                    </select>
-                    <select name="service_month" class="rounded border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800">
-                        <option value="">All months</option>
-                        @foreach ($months as $monthNumber => $monthName)
-                            <option value="{{ $monthNumber }}" @selected((int) $serviceFilter['month'] === (int) $monthNumber)>{{ $monthName }}</option>
-                        @endforeach
-                    </select>
-                </form>
-            </div>
-            @if ($topServices->isNotEmpty())
-                <div class="flex flex-col sm:flex-row gap-4 items-center sm:items-start flex-1 min-h-0">
-                    <div class="relative w-28 h-28 sm:w-24 sm:h-24 md:w-28 md:h-28 max-w-full flex-shrink-0">
-                        <canvas id="topServicesChart" data-slices='@json($serviceChartData['slices'])'></canvas>
+            <template x-if="loading">
+                <x-skeleton-chart title="Top Service Types" />
+            </template>
+            
+            <template x-if="!loading">
+                <div class="contents">
+                    <div class="mb-3 flex items-start justify-between gap-2">
+                        <h3 class="text-base md:text-lg font-semibold text-slate-900 dark:text-white">Top Service Types</h3>
+                        <form method="GET" action="{{ route('admin.dashboard') }}" class="flex items-center gap-1 text-xs" data-dashboard-filter>
+                            <input type="hidden" name="facility_year" value="{{ $facilityFilter['year'] }}">
+                            <input type="hidden" name="facility_month" value="{{ $facilityFilter['month'] }}">
+                            <input type="hidden" name="training_year" value="{{ $trainingFilter['year'] }}">
+                            <input type="hidden" name="training_month" value="{{ $trainingFilter['month'] }}">
+                            <select name="service_year" class="rounded border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800" @change="$el.form.submit()">
+                                @foreach ($availableYears as $year)
+                                    <option value="{{ $year }}" @selected((int) $serviceFilter['year'] === (int) $year)>{{ $year }}</option>
+                                @endforeach
+                            </select>
+                            <select name="service_month" class="rounded border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800" @change="$el.form.submit()">
+                                <option value="">All months</option>
+                                @foreach ($months as $monthNumber => $monthName)
+                                    <option value="{{ $monthNumber }}" @selected((int) $serviceFilter['month'] === (int) $monthNumber)>{{ $monthName }}</option>
+                                @endforeach
+                            </select>
+                        </form>
                     </div>
-                    <div class="flex-1 min-w-0 w-full">
-                        <div class="h-36 overflow-y-scroll scroll-container dashboard-scroll">
-                            <div class="pr-6 space-y-2">
-                            @foreach ($serviceChartData['slices'] as $slice)
-                                <div class="flex justify-between items-center gap-3 text-sm md:text-base">
-                                    <div class="flex items-center gap-2 min-w-0 flex-1">
-                                        <div class="w-3 h-3 rounded flex-shrink-0" style="background-color: {{ $slice['color'] }}"></div>
-                                        <span class="text-slate-700 dark:text-slate-300 truncate">{{ $slice['label'] }}</span>
+                    @if ($topServices->isNotEmpty())
+                        <div class="flex flex-col sm:flex-row gap-4 items-center sm:items-start flex-1 min-h-0">
+                            <div class="relative w-28 h-28 sm:w-24 sm:h-24 md:w-28 md:h-28 max-w-full flex-shrink-0">
+                                <canvas id="topServicesChart" data-slices='@json($serviceChartData['slices'])'></canvas>
+                            </div>
+                            <div class="flex-1 min-w-0 w-full">
+                                <div class="h-36 overflow-y-scroll scroll-container dashboard-scroll">
+                                    <div class="pr-6 space-y-2">
+                                    @foreach ($serviceChartData['slices'] as $slice)
+                                        <div class="flex justify-between items-center gap-3 text-sm md:text-base">
+                                            <div class="flex items-center gap-2 min-w-0 flex-1">
+                                                <div class="w-3 h-3 rounded flex-shrink-0" style="background-color: {{ $slice['color'] }}"></div>
+                                                <span class="text-slate-700 dark:text-slate-300 truncate">{{ $slice['label'] }}</span>
+                                            </div>
+                                            <span class="font-semibold text-slate-900 dark:text-white whitespace-nowrap shrink-0 pr-1 pl-2">{{ $slice['value'] }}</span>
+                                        </div>
+                                    @endforeach
                                     </div>
-                                    <span class="font-semibold text-slate-900 dark:text-white whitespace-nowrap shrink-0 pr-1 pl-2">{{ $slice['value'] }}</span>
                                 </div>
-                            @endforeach
                             </div>
                         </div>
-                    </div>
+                    @else
+                        <div class="text-sm text-slate-600 dark:text-slate-400">No service data available</div>
+                    @endif
                 </div>
-            @else
-                <div class="text-sm text-slate-600 dark:text-slate-400">No service data available</div>
-            @endif
-            </div>
-            <div data-loading-overlay class="absolute inset-0 hidden items-center justify-center bg-slate-900/35 backdrop-blur-[1px]">
-                <div class="flex flex-col items-center justify-center gap-2 rounded-md bg-white/90 px-4 py-3 text-sm font-medium text-slate-700 shadow-sm dark:bg-slate-800/90 dark:text-slate-200">
-                    <div class="newtons-cradle" aria-hidden="true">
-                        <div class="newtons-cradle__dot"></div>
-                        <div class="newtons-cradle__dot"></div>
-                        <div class="newtons-cradle__dot"></div>
-                        <div class="newtons-cradle__dot"></div>
-                    </div>
-                    Please wait...
-                </div>
-            </div>
+            </template>
         </div>
 
+        <!-- Training Modes -->
         <div id="training-modes-card" class="relative rounded-lg glass-card p-5 h-full min-h-[220px] flex flex-col overflow-hidden">
-            <div data-card-content class="contents">
-            <div class="mb-3 flex items-start justify-between gap-2">
-                <h3 class="text-base md:text-lg font-semibold text-slate-900 dark:text-white">Training Modes</h3>
-                <form method="GET" action="{{ route('admin.dashboard') }}" class="flex items-center gap-1 text-xs" data-dashboard-filter>
-                    <input type="hidden" name="facility_year" value="{{ $facilityFilter['year'] }}">
-                    <input type="hidden" name="facility_month" value="{{ $facilityFilter['month'] }}">
-                    <input type="hidden" name="service_year" value="{{ $serviceFilter['year'] }}">
-                    <input type="hidden" name="service_month" value="{{ $serviceFilter['month'] }}">
-                    <select name="training_year" class="rounded border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800">
-                        @foreach ($availableYears as $year)
-                            <option value="{{ $year }}" @selected((int) $trainingFilter['year'] === (int) $year)>{{ $year }}</option>
-                        @endforeach
-                    </select>
-                    <select name="training_month" class="rounded border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800">
-                        <option value="">All months</option>
-                        @foreach ($months as $monthNumber => $monthName)
-                            <option value="{{ $monthNumber }}" @selected((int) $trainingFilter['month'] === (int) $monthNumber)>{{ $monthName }}</option>
-                        @endforeach
-                    </select>
-                </form>
-            </div>
-            @if ($trainingModes->isNotEmpty())
-                <div class="flex flex-col sm:flex-row gap-4 items-center sm:items-start flex-1 min-h-0">
-                    <div class="relative w-28 h-28 sm:w-24 sm:h-24 md:w-28 md:h-28 max-w-full flex-shrink-0">
-                        <canvas id="trainingModesChart" data-slices='@json($trainingModeChartData['slices'])'></canvas>
+            <template x-if="loading">
+                <x-skeleton-chart title="Training Modes" />
+            </template>
+            
+            <template x-if="!loading">
+                <div class="contents">
+                    <div class="mb-3 flex items-start justify-between gap-2">
+                        <h3 class="text-base md:text-lg font-semibold text-slate-900 dark:text-white">Training Modes</h3>
+                        <form method="GET" action="{{ route('admin.dashboard') }}" class="flex items-center gap-1 text-xs" data-dashboard-filter>
+                            <input type="hidden" name="facility_year" value="{{ $facilityFilter['year'] }}">
+                            <input type="hidden" name="facility_month" value="{{ $facilityFilter['month'] }}">
+                            <input type="hidden" name="service_year" value="{{ $serviceFilter['year'] }}">
+                            <input type="hidden" name="service_month" value="{{ $serviceFilter['month'] }}">
+                            <select name="training_year" class="rounded border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800" @change="$el.form.submit()">
+                                @foreach ($availableYears as $year)
+                                    <option value="{{ $year }}" @selected((int) $trainingFilter['year'] === (int) $year)>{{ $year }}</option>
+                                @endforeach
+                            </select>
+                            <select name="training_month" class="rounded border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800" @change="$el.form.submit()">
+                                <option value="">All months</option>
+                                @foreach ($months as $monthNumber => $monthName)
+                                    <option value="{{ $monthNumber }}" @selected((int) $trainingFilter['month'] === (int) $monthNumber)>{{ $monthName }}</option>
+                                @endforeach
+                            </select>
+                        </form>
                     </div>
-                    <div class="flex-1 min-w-0 w-full">
-                        <div class="h-36 overflow-hidden scroll-container dashboard-scroll">
-                            <div class="pr-6 space-y-2">
-                            @foreach ($trainingModeChartData['slices'] as $slice)
-                                <div class="flex justify-between items-center gap-3 text-sm md:text-base">
-                                    <div class="flex items-center gap-2 min-w-0 flex-1">
-                                        <div class="w-3 h-3 rounded flex-shrink-0" style="background-color: {{ $slice['color'] }}"></div>
-                                        <span class="text-slate-700 dark:text-slate-300 truncate">{{ $slice['label'] }}</span>
+                    @if ($trainingModes->isNotEmpty())
+                        <div class="flex flex-col sm:flex-row gap-4 items-center sm:items-start flex-1 min-h-0">
+                            <div class="relative w-28 h-28 sm:w-24 sm:h-24 md:w-28 md:h-28 max-w-full flex-shrink-0">
+                                <canvas id="trainingModesChart" data-slices='@json($trainingModeChartData['slices'])'></canvas>
+                            </div>
+                            <div class="flex-1 min-w-0 w-full">
+                                <div class="h-36 overflow-hidden scroll-container dashboard-scroll">
+                                    <div class="pr-6 space-y-2">
+                                    @foreach ($trainingModeChartData['slices'] as $slice)
+                                        <div class="flex justify-between items-center gap-3 text-sm md:text-base">
+                                            <div class="flex items-center gap-2 min-w-0 flex-1">
+                                                <div class="w-3 h-3 rounded flex-shrink-0" style="background-color: {{ $slice['color'] }}"></div>
+                                                <span class="text-slate-700 dark:text-slate-300 truncate">{{ $slice['label'] }}</span>
+                                            </div>
+                                            <span class="font-semibold text-slate-900 dark:text-white whitespace-nowrap shrink-0 pr-1 pl-2">{{ $slice['value'] }}</span>
+                                        </div>
+                                    @endforeach
                                     </div>
-                                    <span class="font-semibold text-slate-900 dark:text-white whitespace-nowrap shrink-0 pr-1 pl-2">{{ $slice['value'] }}</span>
                                 </div>
-                            @endforeach
                             </div>
                         </div>
-                    </div>
+                    @else
+                        <div class="text-sm text-slate-600 dark:text-slate-400">No training mode data available</div>
+                    @endif
                 </div>
-            @else
-                <div class="text-sm text-slate-600 dark:text-slate-400">No training mode data available</div>
-            @endif
-            </div>
-            <div data-loading-overlay class="absolute inset-0 hidden items-center justify-center bg-slate-900/35 backdrop-blur-[1px]">
-                <div class="flex flex-col items-center justify-center gap-2 rounded-md bg-white/90 px-4 py-3 text-sm font-medium text-slate-700 shadow-sm dark:bg-slate-800/90 dark:text-slate-200">
-                    <div class="newtons-cradle" aria-hidden="true">
-                        <div class="newtons-cradle__dot"></div>
-                        <div class="newtons-cradle__dot"></div>
-                        <div class="newtons-cradle__dot"></div>
-                        <div class="newtons-cradle__dot"></div>
-                    </div>
-                    Please wait...
-                </div>
-            </div>
+            </template>
         </div>
     </div>
 @endsection
@@ -661,5 +696,25 @@
                 updateFilteredCards(select.form);
             });
         });
+
+        // Hide loading indicator and fade in dashboard content
+        window.addEventListener('load', () => {
+            const loader = document.getElementById('dashboard-loader');
+            if (loader) {
+                loader.style.transition = 'opacity 0.3s ease-out';
+                loader.style.opacity = '0';
+                setTimeout(() => {
+                    loader.style.display = 'none';
+                }, 300);
+            }
+        });
+
+        // Also try immediately in case 'load' already fired
+        if (document.readyState === 'complete') {
+            const loader = document.getElementById('dashboard-loader');
+            if (loader) {
+                loader.style.display = 'none';
+            }
+        }
     </script>
 @endpush

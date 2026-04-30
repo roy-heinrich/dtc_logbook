@@ -10,18 +10,32 @@ use App\Http\Controllers\Admin\FacilityController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\ActivityController;
 use App\Http\Controllers\Admin\AgreementController;
+use App\Http\Controllers\Admin\DashboardWidgetController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 
-// Redirect root to login page
+// Redirect root based on authentication status
 Route::get('/', function () {
+    if (Auth::guard('admin')->check()) {
+        return redirect()->route('admin.dashboard');
+    }
     return redirect()->route('login');
 });
 
 // Admin routes - protected by admin middleware
 Route::middleware('admin')->group(function () {
+    Route::prefix('api/dashboard')->name('admin.dashboard.api.')->group(function () {
+        Route::get('/stat', [DashboardWidgetController::class, 'stat'])->name('stat');
+        Route::get('/recent-activities', [DashboardWidgetController::class, 'recentActivities'])->name('recent-activities');
+        Route::get('/chart', [DashboardWidgetController::class, 'chart'])->name('chart');
+    });
+
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/widget-dashboard', function () {
+            return view('admin.widget-dashboard');
+        })->name('widget-dashboard');
         Route::get('/login-logs', [LoginLogController::class, 'index'])->name('login-logs.index');
         
         // Registered Users

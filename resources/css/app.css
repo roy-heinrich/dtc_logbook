@@ -196,3 +196,43 @@
 	}
 
 }
+
+/* Skeleton Screen Loading Animation */
+@layer components {
+	.skeleton {
+		@apply bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 dark:from-slate-800 dark:via-slate-700 dark:to-slate-800;
+		background-size: 200% 100%;
+		animation: shimmer 1.5s infinite;
+	}
+
+	.skeleton-text {
+		@apply skeleton;
+	}
+
+	@keyframes shimmer {
+		0% {
+			background-position: 200% 0;
+		}
+		100% {
+			background-position: -200% 0;
+		}
+	}
+
+	/* Page content fade-in on load */
+	[data-dashboard-content] {
+		@apply animate-fade-in;
+	}
+
+	@keyframes fadeIn {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+
+	.animate-fade-in {
+		animation: fadeIn 0.5s ease-in-out;
+	}
+}

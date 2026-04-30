@@ -1,8 +1,54 @@
 import './bootstrap';
 
 import Alpine from 'alpinejs';
+import { Chart, registerables } from 'chart.js';
 
 window.Alpine = Alpine;
+Chart.register(...registerables);
+window.Chart = Chart;
+
+window.renderDashboardChart = (canvasId, data = {}) => {
+	const canvas = document.getElementById(canvasId);
+	if (!canvas || !window.Chart) {
+		return;
+	}
+
+	const existingChart = window.Chart.getChart(canvas);
+	if (existingChart) {
+		existingChart.destroy();
+	}
+
+	return new window.Chart(canvas, {
+		type: data.type || 'bar',
+		data: {
+			labels: data.labels || [],
+			datasets: [{
+				label: data.label || 'Count',
+				data: data.values || [],
+				backgroundColor: data.color || '#3b82f6',
+				borderRadius: 8,
+				borderSkipped: false,
+			}],
+		},
+		options: {
+			responsive: true,
+			maintainAspectRatio: false,
+			plugins: {
+				legend: {
+					display: false,
+				},
+			},
+			scales: {
+				y: {
+					beginAtZero: true,
+					ticks: {
+						precision: 0,
+					},
+				},
+			},
+		},
+	});
+};
 
 // Register stickyHeader BEFORE Alpine.start()
 Alpine.data('stickyHeader', () => ({
@@ -197,6 +243,53 @@ Alpine.data('datePicker', (inputId, initialValue) => {
 		},
 	};
 });
+
+// Register dashboardState for skeleton screen loading UI
+Alpine.data('dashboardState', () => ({
+	loading: false,
+	
+	init() {
+		// Listen for filter form submissions to show skeleton screens
+		const filterForms = document.querySelectorAll('[data-dashboard-filter]');
+		filterForms.forEach(form => {
+			form.addEventListener('submit', (e) => {
+				this.loading = true;
+			});
+			
+			// Also handle change events on selects that auto-submit
+			const selects = form.querySelectorAll('select');
+			selects.forEach(select => {
+				select.addEventListener('change', (e) => {
+					this.loading = true;
+					// Small delay to ensure loading state is shown before submission
+					setTimeout(() => {
+						form.submit();
+					}, 50);
+				});
+			});
+		});
+		
+		// Check if data is already loaded (page refresh)
+		if (document.readyState === 'complete') {
+			this.finishLoading();
+		} else {
+			document.addEventListener('DOMContentLoaded', () => {
+				this.finishLoading();
+			});
+		}
+	},
+	
+	finishLoading() {
+		// Add a small delay to ensure skeleton animation is visible
+		setTimeout(() => {
+			this.loading = false;
+		}, 200);
+	},
+	
+	setLoading(state) {
+		this.loading = state;
+	}
+}));
 
 Alpine.start();
 
