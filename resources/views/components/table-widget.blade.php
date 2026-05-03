@@ -31,15 +31,7 @@
     <h3 class="mb-4 text-lg font-semibold text-slate-900 dark:text-white" x-text="'{{ $title }}'"></h3>
 
     <template x-if="loading">
-        <div class="space-y-3">
-            <template x-for="i in 5" :key="i">
-                <div class="flex gap-3">
-                    <div class="skeleton h-4 w-1/4"></div>
-                    <div class="skeleton h-4 w-1/3"></div>
-                    <div class="skeleton h-4 w-1/5"></div>
-                </div>
-            </template>
-        </div>
+        <p class="text-sm text-slate-500 dark:text-slate-400">Loading table data...</p>
     </template>
 
     <template x-if="!loading">

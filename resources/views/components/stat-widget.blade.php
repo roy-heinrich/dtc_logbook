@@ -32,10 +32,7 @@
     class="rounded-xl bg-white p-5 shadow-sm dark:bg-slate-900"
 >
     <template x-if="loading">
-        <div class="space-y-3">
-            <div class="skeleton h-4 w-1/2"></div>
-            <div class="skeleton h-8 w-3/4"></div>
-        </div>
+        <p class="text-sm text-slate-500 dark:text-slate-400">Loading...</p>
     </template>
 
     <template x-if="!loading">

@@ -37,10 +37,7 @@
     <h3 class="mb-4 text-lg font-semibold text-slate-900 dark:text-white" x-text="'{{ $title }}'"></h3>
 
     <template x-if="loading">
-        <div class="space-y-2">
-            <div class="skeleton h-4 w-1/3"></div>
-            <div class="skeleton h-48 w-full"></div>
-        </div>
+        <p class="text-sm text-slate-500 dark:text-slate-400">Loading chart...</p>
     </template>
 
     <canvas x-show="!loading" x-cloak :id="'{{ $canvasId }}'" class="h-48 w-full"></canvas>

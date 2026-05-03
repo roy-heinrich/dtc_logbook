@@ -6,7 +6,7 @@
     <div class="space-y-6" x-data>
         <div>
             <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Widget Dashboard Demo</h1>
-            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Each widget loads its own data and shows a shimmer placeholder first.</p>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Each widget loads its own data independently.</p>
         </div>
 
         <div class="grid gap-6 md:grid-cols-3">

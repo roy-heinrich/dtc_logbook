@@ -2,19 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@keyframes shimmer {
-	0% { background-position: 200% 0; }
-	100% { background-position: -200% 0; }
-}
-
-.skeleton,
-.skeleton-text {
-	background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
-	background-size: 200% 100%;
-	animation: shimmer 1.5s infinite;
-	border-radius: 0.375rem;
-}
-
 @layer base {
 	[x-cloak] {
 		display: none !important;
@@ -210,27 +197,7 @@
 
 }
 
-/* Skeleton Screen Loading Animation */
 @layer components {
-	.skeleton {
-		@apply bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 dark:from-slate-800 dark:via-slate-700 dark:to-slate-800;
-		background-size: 200% 100%;
-		animation: shimmer 1.5s infinite;
-	}
-
-	.skeleton-text {
-		@apply skeleton;
-	}
-
-	@keyframes shimmer {
-		0% {
-			background-position: 200% 0;
-		}
-		100% {
-			background-position: -200% 0;
-		}
-	}
-
 	/* Page content fade-in on load */
 	[data-dashboard-content] {
 		@apply animate-fade-in;
