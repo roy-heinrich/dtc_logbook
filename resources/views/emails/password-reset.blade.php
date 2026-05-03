@@ -6,11 +6,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Password Reset</title>
 </head>
-<body>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+
     <p>Hi {{ $name }},</p>
-    <p>You requested a password reset. Click the link below to set a new password:</p>
-    <p><a href="{{ $resetUrl }}">Reset your password</a></p>
-    <p>This link will expire in {{ $expires }} minutes.</p>
-    <p>If you did not request a password reset, you can ignore this email.</p>
+
+    <p>
+        We received a request to reset the password for your account.
+        Click the link below to create a new password:
+    </p>
+
+    <p>
+        <a href="{{ $resetUrl }}">
+            Reset your password
+        </a>
+    </p>
+
+    <p>
+        For your security, this password reset link will expire in
+        <strong>{{ $expires }} minutes</strong>.
+    </p>
+
+    <p>
+        If you did not request a password reset, please ignore this email.
+        Your account will remain secure and no changes will be made.
+    </p>
+
+    <hr>
+
+    <p style="font-size: 13px; color: #666;">
+        This is an automatically generated email message. Please do not reply to this email.
+    </p>
+
+    <p style="font-size: 13px; color: #666;">
+        If you continue to experience issues accessing your account,
+        please contact the system administrator or support team.
+    </p>
+
 </body>
 </html>
