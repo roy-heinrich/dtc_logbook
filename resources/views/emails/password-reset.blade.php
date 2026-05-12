@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Password Reset</title>
+    <title>Automated Password Reset</title>
 </head>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
 
@@ -34,7 +34,7 @@
     <hr>
 
     <p style="font-size: 13px; color: #666;">
-        This is an automatically generated email message. Please do not reply to this email.
+        This is an automated message. Please do not reply to this email, as replies are not monitored.
     </p>
 
     <p style="font-size: 13px; color: #666;">

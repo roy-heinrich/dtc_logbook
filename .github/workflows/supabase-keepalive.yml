@@ -1,0 +1,27 @@
+name: Supabase Keepalive
+
+on:
+  schedule:
+    # Runs daily at 03:17 UTC.
+    - cron: "17 3 * * *"
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Run read-only heartbeat query
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "SUPABASE_DB_URL secret is not set."
+            exit 1
+          fi
+
+          # Keep activity read-only; this should not modify data.
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "SELECT 1;"
