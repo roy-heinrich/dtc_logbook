@@ -2,6 +2,8 @@ name: Supabase Keepalive
 
 on:
   schedule:
+    # Temporary test cadence: runs every 10 minutes.
+    - cron: "*/10 * * * *"
     # Runs daily at 03:17 UTC.
     - cron: "17 3 * * *"
 
