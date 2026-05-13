@@ -25,5 +25,23 @@ jobs:
 
           SUPABASE_DB_URL="$(printf '%s' "$SUPABASE_DB_URL" | tr -d '\r\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
 
+          SUPABASE_DB_URL="${SUPABASE_DB_URL#postgresql://}"
+          SUPABASE_DB_URL="${SUPABASE_DB_URL#postgres://}"
+
+          SUPABASE_USER="${SUPABASE_DB_URL%%:*}"
+          SUPABASE_REST="${SUPABASE_DB_URL#*:}"
+          SUPABASE_PASSWORD="${SUPABASE_REST%%@*}"
+          SUPABASE_HOSTPORT_DB="${SUPABASE_REST#*@}"
+          SUPABASE_HOSTPORT="${SUPABASE_HOSTPORT_DB%%/*}"
+          SUPABASE_DBNAME="${SUPABASE_HOSTPORT_DB#*/}"
+          SUPABASE_HOST="${SUPABASE_HOSTPORT%%:*}"
+          SUPABASE_PORT="${SUPABASE_HOSTPORT#*:}"
+
           # Keep activity read-only; this should not modify data.
-          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "SELECT 1;"
+          PGPASSWORD="$SUPABASE_PASSWORD" psql \
+            -h "$SUPABASE_HOST" \
+            -p "$SUPABASE_PORT" \
+            -U "$SUPABASE_USER" \
+            -d "$SUPABASE_DBNAME" \
+            -v ON_ERROR_STOP=1 \
+            -c "SELECT 1;"
