@@ -16,32 +16,24 @@ jobs:
 
       - name: Run read-only heartbeat query
         env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_DB_HOST: aws-1-ap-southeast-1.pooler.supabase.com
+          SUPABASE_DB_PORT: "6543"
+          SUPABASE_DB_NAME: postgres
+          SUPABASE_DB_USER: postgres.thzavgsxboykvhyxdcmb
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
-          if [ -z "$SUPABASE_DB_URL" ]; then
-            echo "SUPABASE_DB_URL secret is not set."
+          if [ -z "$SUPABASE_DB_PASSWORD" ]; then
+            echo "SUPABASE_DB_PASSWORD secret is not set."
             exit 1
           fi
 
-          SUPABASE_DB_URL="$(printf '%s' "$SUPABASE_DB_URL" | tr -d '\r\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
-
-          SUPABASE_DB_URL="${SUPABASE_DB_URL#postgresql://}"
-          SUPABASE_DB_URL="${SUPABASE_DB_URL#postgres://}"
-
-          SUPABASE_USER="${SUPABASE_DB_URL%%:*}"
-          SUPABASE_REST="${SUPABASE_DB_URL#*:}"
-          SUPABASE_PASSWORD="${SUPABASE_REST%%@*}"
-          SUPABASE_HOSTPORT_DB="${SUPABASE_REST#*@}"
-          SUPABASE_HOSTPORT="${SUPABASE_HOSTPORT_DB%%/*}"
-          SUPABASE_DBNAME="${SUPABASE_HOSTPORT_DB#*/}"
-          SUPABASE_HOST="${SUPABASE_HOSTPORT%%:*}"
-          SUPABASE_PORT="${SUPABASE_HOSTPORT#*:}"
+          SUPABASE_DB_PASSWORD="$(printf '%s' "$SUPABASE_DB_PASSWORD" | tr -d '\r\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
 
           # Keep activity read-only; this should not modify data.
-          PGPASSWORD="$SUPABASE_PASSWORD" psql \
-            -h "$SUPABASE_HOST" \
-            -p "$SUPABASE_PORT" \
-            -U "$SUPABASE_USER" \
-            -d "$SUPABASE_DBNAME" \
+          PGPASSWORD="$SUPABASE_DB_PASSWORD" psql \
+            -h "$SUPABASE_DB_HOST" \
+            -p "$SUPABASE_DB_PORT" \
+            -U "$SUPABASE_DB_USER" \
+            -d "$SUPABASE_DB_NAME" \
             -v ON_ERROR_STOP=1 \
             -c "SELECT 1;"
