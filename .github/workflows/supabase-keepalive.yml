@@ -1,6 +1,7 @@
 name: Supabase Keepalive
 
 on:
+  workflow_dispatch:
   schedule:
     # Temporary test cadence: runs every 10 minutes.
     - cron: "*/10 * * * *"
