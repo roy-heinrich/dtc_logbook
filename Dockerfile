@@ -1,4 +1,5 @@
-FROM php:8.2-cli
+# Pinned to the release patching CVE-2026-109618 / CVE-2026-109619; bump on PHP security releases.
+FROM php:8.2.35-cli
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -14,8 +15,8 @@ RUN apt-get update && apt-get install -y \
     unzip \
     libpq-dev
 
-# Install Node.js 20
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+# Node 20 is EOL and is not patched for the Oct 2026 CVEs; 24.x is the current LTS.
+RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && \
     apt-get install -y nodejs
 
 # Clear cache
